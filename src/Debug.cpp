@@ -242,7 +242,8 @@ void DebugInfo::EmitFunctionStart(tree FnDecl, Function *Fn) {
   if (I != SPCache.end()) {
     DISubprogram SPDecl(cast<MDNode>(I->second));
     DISubprogram SP = CreateSubprogramDefinition(SPDecl, lineno, Fn);
-    SPDecl->replaceAllUsesWith(SP);
+    // Below line commented by Tarun in attempt to compile using llvm-3.6
+    // SPDecl->replaceAllUsesWith(SP);
 
     // Push function on region stack.
 // Below two lines commented by Arun in attempt to compile using llvm-3.6
@@ -271,7 +272,8 @@ void DebugInfo::EmitFunctionStart(tree FnDecl, Function *Fn) {
   if (I != SPCache.end()) {
     DISubprogram SPDecl(cast<MDNode>(I->second));
     DISubprogram SP = CreateSubprogramDefinition(SPDecl, lineno, Fn);
-    SPDecl->replaceAllUsesWith(SP);
+    // Below line commented by Tarun in attempt to compile using llvm-3.6
+    // SPDecl->replaceAllUsesWith(SP);
 
     // Push function on region stack.
 // Below two lines commented by Arun in attempt to compile using llvm-3.6
@@ -527,7 +529,7 @@ DIType DebugInfo::createMethodType(tree type) {
     findRegion(TYPE_CONTEXT(type)), getOrCreateFile(main_input_filename),
     0, 0, 0, 0);
   llvm::MDNode *FTN = FwdType;
-  llvm::TrackingVH<llvm::MDNode> FwdTypeNode = FTN;
+  llvm::TrackingMDRef FwdTypeNode(FTN);
 // Below line commented by Arun in attempt to compile using llvm-3.6
 //  TypeCache[type] = WeakVH(FwdType);
 // Below line added by Arun in attempt to compile using llvm-3.6
@@ -544,7 +546,7 @@ DIType DebugInfo::createMethodType(tree type) {
 // Below line commented by Arun in attempt to compile using llvm-3.6
 //  llvm::SmallVector<Value*, 16> EltTys;
 // Below line added by Arun in attempt to compile using llvm-3.6
-  llvm::SmallVector<DIType, 16> EltTys;
+  llvm::SmallVector<Metadata*, 16> EltTys;
 
   // Add the result type at least.
   EltTys.push_back(getOrCreateType(TREE_TYPE(type)));
@@ -581,7 +583,8 @@ DIType DebugInfo::createMethodType(tree type) {
 
   // Now that we have a real decl for the struct, replace anything using the
   // old decl with the new one.  This will recursively update the debug info.
-  llvm::DIType(FwdTypeNode).replaceAllUsesWith(RealType);
+  // Below line commented by Tarun in attempt to compile using llvm-3.6
+  // llvm::DIType(FwdTypeNode).replaceAllUsesWith(RealType);
 
   return RealType;
 }
@@ -628,7 +631,7 @@ DIType DebugInfo::createArrayType(tree type) {
 // Below line commented by Arun in attempt to compile using llvm-3.6
 //  llvm::SmallVector<Value*, 8> Subscripts;
 // Below line commented by Arun in attempt to compile using llvm-3.6
-  llvm::SmallVector<DISubrange*, 8> Subscripts;
+  llvm::SmallVector<Metadata*, 8> Subscripts;
 
   // There will be ARRAY_TYPE nodes for each rank.  Followed by the derived
   // type.
@@ -668,7 +671,7 @@ DIType DebugInfo::createArrayType(tree type) {
 /// createEnumType - Create EnumType.
 DIType DebugInfo::createEnumType(tree type) {
   // enum { a, b, ..., z };
-  llvm::SmallVector<Value*, 32> Elements;
+  llvm::SmallVector<Metadata*, 32> Elements;
 
   if (TYPE_SIZE(type)) {
     for (tree Link = TYPE_VALUES(type); Link; Link = TREE_CHAIN(Link)) {
@@ -756,7 +759,7 @@ DIType DebugInfo::createStructType(tree type) {
 
   // Insert into the TypeCache so that recursive uses will find it.
   llvm::MDNode *FDN = FwdDecl;
-  llvm::TrackingVH<llvm::MDNode> FwdDeclNode = FDN;
+  llvm::TrackingMDRef FwdDeclNode(FDN);
 // Below line commented by Arun in attempt to compile using llvm-3.6
 //  TypeCache[type] = WeakVH(FwdDecl);
 // Below line commented by Arun in attempt to compile using llvm-3.6
@@ -771,7 +774,7 @@ DIType DebugInfo::createStructType(tree type) {
   RegionMap[type] = TrackingMDRef(FwdDecl);
 
   // Convert all the elements.
-  llvm::SmallVector<Value*, 16> EltTys;
+  llvm::SmallVector<Metadata*, 16> EltTys;
 
   if (tree binfo = TYPE_BINFO(type)) {
     for (unsigned i = 0, e = BINFO_N_BASE_BINFOS(binfo); i != e; ++i) {
@@ -925,7 +928,8 @@ DIType DebugInfo::createStructType(tree type) {
 
   // Now that we have a real decl for the struct, replace anything using the
   // old decl with the new one.  This will recursively update the debug info.
-  llvm::DIType(FwdDeclNode).replaceAllUsesWith(RealDecl);
+  // Below line commented by Tarun in attempt to compile using llvm-3.6
+  // llvm::DIType(FwdDeclNode).replaceAllUsesWith(RealDecl);
 
   return RealDecl;
 }
@@ -1263,7 +1267,10 @@ Instruction *DebugInfo::InsertDeclare(Value *Storage, DIVariable D,
   if (!DeclareFn)
     DeclareFn = Intrinsic::getDeclaration(&M, Intrinsic::dbg_declare);
 
-  Value *Args[] = { MDNode::get(Storage->getContext(), Storage), D };
+  // Line below commented by Tarun in order to get it to build with llvm-3.6
+  // Value *Args[] = { MDNode::get(Storage->getContext(), Storage), D };
+  // FIXME: Tarun: Fill in Args with the correct values
+  std::vector<Value *>Args;
   return CallInst::Create(DeclareFn, Args, "", InsertBefore);
 }
 
@@ -1275,7 +1282,10 @@ Instruction *DebugInfo::InsertDeclare(Value *Storage, DIVariable D,
   if (!DeclareFn)
     DeclareFn = Intrinsic::getDeclaration(&M, Intrinsic::dbg_declare);
 
-  Value *Args[] = { MDNode::get(Storage->getContext(), Storage), D };
+  // Line below commented by Tarun in order to get it to build with llvm-3.6
+  // Value *Args[] = { MDNode::get(Storage->getContext(), Storage), D };
+  // FIXME: Tarun: Fill in Args with the correct values
+  std::vector<Value *>Args;
 
   // If this block already has a terminator then insert this intrinsic
   // before the terminator.
@@ -1293,9 +1303,12 @@ Instruction *DebugInfo::InsertDbgValueIntrinsic(
   if (!ValueFn)
     ValueFn = Intrinsic::getDeclaration(&M, Intrinsic::dbg_value);
 
-  Value *Args[] = { MDNode::get(V->getContext(), V),
-                    ConstantInt::get(Type::getInt64Ty(V->getContext()), Offset),
-                    D };
+  // Line below commented by Tarun in order to get it to build with llvm-3.6
+  // Value *Args[] = { MDNode::get(V->getContext(), V),
+  //                   ConstantInt::get(Type::getInt64Ty(V->getContext()), Offset),
+  //                   D };
+  // FIXME: Tarun: Fill in Args with the correct values
+  std::vector<Value*> Args;
   return CallInst::Create(ValueFn, Args, "", InsertBefore);
 }
 
@@ -1307,8 +1320,11 @@ Instruction *DebugInfo::InsertDbgValueIntrinsic(
   if (!ValueFn)
     ValueFn = Intrinsic::getDeclaration(&M, Intrinsic::dbg_value);
 
-  Value *Args[] = { MDNode::get(V->getContext(), V),
-                    ConstantInt::get(Type::getInt64Ty(V->getContext()), Offset),
-                    D };
+  // Line below commented by Tarun in order to get it to build with llvm-3.6
+  // Value *Args[] = { MDNode::get(V->getContext(), V),
+  //                   ConstantInt::get(Type::getInt64Ty(V->getContext()), Offset),
+  //                   D };
+  // FIXME: Tarun: Fill in Args with the correct values
+  std::vector<Value*> Args;
   return CallInst::Create(ValueFn, Args, "", InsertAtEnd);
 }
