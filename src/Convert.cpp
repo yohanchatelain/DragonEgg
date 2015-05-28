@@ -8705,8 +8705,8 @@ bool TreeToLLVM::EmitBuiltinCall(gimple stmt, tree fndecl,
       if (gimple_has_location(stmt)) {
         // Pass the location of the asm using a !srcloc metadata.
         Constant *LocationCookie = Builder.getInt64(gimple_location(stmt));
-//Below line commented by Arun to attempt compiling of dragonegg with gcc while ignoring llvm errors for the moment
-//        CV->setMetadata("srcloc", MDNode::get(Context, LocationCookie));
+       CV->setMetadata("srcloc", MDNode::get(Context,
+                                             { ConstantAsMetadata::get(LocationCookie) }));
       }
 
       // If the call produces a value, store it into the destination.

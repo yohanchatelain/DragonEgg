@@ -46,6 +46,16 @@ extern "C" {
 #include "tree.h"
 
 #include "diagnostic.h"
+  /* Start of lines inserted by Tarun to get this to work with GCC 4.9 */
+#include "tree-ssa-alias.h"
+  #include "internal-fn.h"
+  #include "is-a.h"
+  #include "predict.h"
+  #include "tree-core.h"
+  #include "function.h"
+  #include "basic-block.h"
+  #include "gimple-expr.h"
+  /* End of lines inserted by Tarun to get this to work with GCC 4.9 */
 #include "gimple.h"
 #if (GCC_MINOR > 6)
 #include "gimple-pretty-print.h"
@@ -905,7 +915,8 @@ bool TreeToLLVM::TargetIntrinsicLower(
   case movntq:
   case movntsd:
   case movntss: {
-    MDNode *Node = MDNode::get(Context, Builder.getInt32(1));
+    MDNode *Node = MDNode::get(Context,
+                               { ConstantAsMetadata::get(Builder.getInt32(1)) });
 
     // Convert the type of the pointer to a pointer to the stored type.
     unsigned AS = Ops[0]->getType()->getPointerAddressSpace();
