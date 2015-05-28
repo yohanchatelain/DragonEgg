@@ -137,7 +137,8 @@ MDNode *describeAliasSet(tree t) {
       MDNode *&LeafTag = NodeTags[leaf_set];
       // It would be neat to strip the tbaa tag from any instructions using it
       // but it is simpler to just replace it with the root tag everywhere.
-      LeafTag->replaceAllUsesWith(getTBAARoot());
+// Line below commented by Arun to attempt compiling of dragonegg with gcc while ignoring llvm errors for the moment
+//      LeafTag->replaceAllUsesWith(getTBAARoot());
       LeafTag = 0;
     }
   }

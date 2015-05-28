@@ -203,7 +203,18 @@ bool isInt64(const_tree t, bool Unsigned) {
   if (!t)
     return false;
   if (HOST_BITS_PER_WIDE_INT == 64)
+#if (GCC_MINOR <= 8)     /* Condition added by Arun */
     return host_integerp(t, Unsigned) && !TREE_OVERFLOW(t);
+//Below lines added by Arun
+#else
+  {
+    if (Unsigned)
+      return tree_fits_uhwi_p(t) && !TREE_OVERFLOW(t);
+    else
+      return tree_fits_shwi_p(t) && !TREE_OVERFLOW(t);
+  }
+#endif
+//End of lines added by Arun
   assert(HOST_BITS_PER_WIDE_INT == 32 &&
          "Only 32- and 64-bit hosts supported!");
   return (isa<INTEGER_CST>(t) && !TREE_OVERFLOW(t)) &&

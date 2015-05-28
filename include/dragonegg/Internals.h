@@ -34,7 +34,19 @@
 #include "llvm/Support/FormattedStream.h"
 
 struct basic_block_def;
+
+#if (GCC_MINOR <= 8) /* Condition added by Arun */
 union gimple_statement_d;
+//Below lines added by Arun in attempt to compile using gcc-4.9
+//These lines should be a temporary measure
+//gcc-4.9 replaced "union gimple_statement_d" with "struct gimple_statement_base"
+//The typedef that follows is just a quickfix to deal with that change.
+#else
+struct gimple_statement_base;
+typedef struct gimple_statement_base gimple_statement_d;
+#endif
+//End of lines added by Arun
+
 union tree_node;
 
 namespace llvm {

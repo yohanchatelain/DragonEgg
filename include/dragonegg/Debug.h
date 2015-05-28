@@ -48,10 +48,16 @@ class Module;
 /// is responsible for emitting to llvm globals or pass directly to the backend.
 class DebugInfo {
 private:
-  llvm::SmallVector<llvm::WeakVH, 4> RegionStack;
+// Below line commented by Arun in attempt to compile using llvm 3.6
+//  llvm::SmallVector<llvm::WeakVH, 4> RegionStack;
+// Below line added by Arun in attempt to compile using llvm 3.6
+  llvm::SmallVector<llvm::TrackingMDRef, 4> RegionStack;
   // Stack to track declarative scopes.
 
-  std::map<tree_node *, llvm::WeakVH> RegionMap;
+// Below line commented by Arun in attempt to compile using llvm 3.6
+//  std::map<tree_node *, llvm::WeakVH> RegionMap;
+// Below line added by Arun in attempt to compile using llvm 3.6
+  std::map<tree_node *, llvm::TrackingMDRef> RegionMap;
 
   llvm::Module &M;
   llvm::LLVMContext &VMContext;
@@ -65,13 +71,24 @@ private:
   int PrevLineNo;           // Previous location line# encountered.
   llvm::BasicBlock *PrevBB;       // Last basic block encountered.
 
-  std::map<tree_node *, llvm::WeakVH> TypeCache;
+// Below line commented by Arun in attempt to compile using llvm 3.6
+//  std::map<tree_node *, llvm::WeakVH> TypeCache;
+// Below line added by Arun in attempt to compile using llvm 3.6
+  std::map<tree_node *, llvm::TrackingMDRef> TypeCache;
   // Cache of previously constructed
   // Types.
-  std::map<tree_node *, llvm::WeakVH> SPCache;
+
+// Below line commented by Arun in attempt to compile using llvm 3.6
+//  std::map<tree_node *, llvm::WeakVH> SPCache;
+// Below line added by Arun in attempt to compile using llvm 3.6
+  std::map<tree_node *, llvm::TrackingMDRef> SPCache;
   // Cache of previously constructed
   // Subprograms.
-  std::map<tree_node *, llvm::WeakVH> NameSpaceCache;
+
+// Below line commented by Arun in attempt to compile using llvm 3.6
+//  std::map<tree_node *, llvm::WeakVH> NameSpaceCache;
+// Below line added by Arun in attempt to compile using llvm 3.6
+  std::map<tree_node *, llvm::TrackingMDRef> NameSpaceCache;
   // Cache of previously constructed name
   // spaces.
 
