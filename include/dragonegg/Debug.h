@@ -209,22 +209,26 @@ private:
 
   /// InsertDeclare - Insert a new llvm.dbg.declare intrinsic call.
   llvm::Instruction *
-  InsertDeclare(llvm::Value *Storage, llvm::DIVariable D,
+  InsertDeclare(llvm::Value *Storage,
+                llvm::DIVariable D, llvm::DIExpression Expr,
                 llvm::BasicBlock *InsertAtEnd);
-
+  
   /// InsertDeclare - Insert a new llvm.dbg.declare intrinsic call.
   llvm::Instruction *
-  InsertDeclare(llvm::Value *Storage, llvm::DIVariable D,
+  InsertDeclare(llvm::Value *Storage,
+                llvm::DIVariable D, llvm::DIExpression Expr,
                 llvm::Instruction *InsertBefore);
 
   /// InsertDbgValueIntrinsic - Insert a new llvm.dbg.value intrinsic call.
   llvm::Instruction *
-  InsertDbgValueIntrinsic(llvm::Value *V, uint64_t Offset, llvm::DIVariable D,
+  InsertDbgValueIntrinsic(llvm::Value *V, uint64_t Offset,
+                          llvm::DIVariable D, llvm::DIExpression Expr,
                           llvm::BasicBlock *InsertAtEnd);
 
   /// InsertDbgValueIntrinsic - Insert a new llvm.dbg.value intrinsic call.
   llvm::Instruction *InsertDbgValueIntrinsic(llvm::Value *V, uint64_t Offset,
                                              llvm::DIVariable D,
+                                             llvm::DIExpression Expr,
                                              llvm::Instruction *InsertBefore);
 };
 

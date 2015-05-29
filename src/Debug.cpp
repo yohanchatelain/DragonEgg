@@ -529,7 +529,7 @@ DIType DebugInfo::createMethodType(tree type) {
     findRegion(TYPE_CONTEXT(type)), getOrCreateFile(main_input_filename),
     0, 0, 0, 0);
   llvm::MDNode *FTN = FwdType;
-  llvm::TrackingMDRef FwdTypeNode(FTN);
+  llvm::TrackingMDNodeRef FwdTypeNode(FTN);
 // Below line commented by Arun in attempt to compile using llvm-3.6
 //  TypeCache[type] = WeakVH(FwdType);
 // Below line added by Arun in attempt to compile using llvm-3.6
@@ -759,7 +759,7 @@ DIType DebugInfo::createStructType(tree type) {
 
   // Insert into the TypeCache so that recursive uses will find it.
   llvm::MDNode *FDN = FwdDecl;
-  llvm::TrackingMDRef FwdDeclNode(FDN);
+  llvm::TrackingMDNodeRef FwdDeclNode(FDN);
 // Below line commented by Arun in attempt to compile using llvm-3.6
 //  TypeCache[type] = WeakVH(FwdDecl);
 // Below line commented by Arun in attempt to compile using llvm-3.6
@@ -1261,70 +1261,30 @@ DISubprogram DebugInfo::CreateSubprogramDefinition(
 
 /// InsertDeclare - Insert a new llvm.dbg.declare intrinsic call.
 Instruction *DebugInfo::InsertDeclare(Value *Storage, DIVariable D,
+                                      DIExpression DExpr,
                                       Instruction *InsertBefore) {
-  assert(Storage && "no storage passed to dbg.declare");
-  assert(D.Verify() && "empty DIVariable passed to dbg.declare");
-  if (!DeclareFn)
-    DeclareFn = Intrinsic::getDeclaration(&M, Intrinsic::dbg_declare);
-
-  // Line below commented by Tarun in order to get it to build with llvm-3.6
-  // Value *Args[] = { MDNode::get(Storage->getContext(), Storage), D };
-  // FIXME: Tarun: Fill in Args with the correct values
-  std::vector<Value *>Args;
-  return CallInst::Create(DeclareFn, Args, "", InsertBefore);
+  return Builder.insertDeclare(Storage, D, DExpr, InsertBefore);
 }
 
 /// InsertDeclare - Insert a new llvm.dbg.declare intrinsic call.
 Instruction *DebugInfo::InsertDeclare(Value *Storage, DIVariable D,
+                                      DIExpression DExpr,
                                       BasicBlock *InsertAtEnd) {
-  assert(Storage && "no storage passed to dbg.declare");
-  assert(D.Verify() && "invalid DIVariable passed to dbg.declare");
-  if (!DeclareFn)
-    DeclareFn = Intrinsic::getDeclaration(&M, Intrinsic::dbg_declare);
-
-  // Line below commented by Tarun in order to get it to build with llvm-3.6
-  // Value *Args[] = { MDNode::get(Storage->getContext(), Storage), D };
-  // FIXME: Tarun: Fill in Args with the correct values
-  std::vector<Value *>Args;
-
-  // If this block already has a terminator then insert this intrinsic
-  // before the terminator.
-  if (TerminatorInst *T = InsertAtEnd->getTerminator())
-    return CallInst::Create(DeclareFn, Args, "", T);
-  else
-    return CallInst::Create(DeclareFn, Args, "", InsertAtEnd);
+  return Builder.insertDeclare(Storage, D, DExpr, InsertAtEnd);
 }
 
 /// InsertDbgValueIntrinsic - Insert a new llvm.dbg.value intrinsic call.
 Instruction *DebugInfo::InsertDbgValueIntrinsic(
-    Value *V, uint64_t Offset, DIVariable D, Instruction *InsertBefore) {
-  assert(V && "no value passed to dbg.value");
-  assert(D.Verify() && "invalid DIVariable passed to dbg.value");
-  if (!ValueFn)
-    ValueFn = Intrinsic::getDeclaration(&M, Intrinsic::dbg_value);
-
-  // Line below commented by Tarun in order to get it to build with llvm-3.6
-  // Value *Args[] = { MDNode::get(V->getContext(), V),
-  //                   ConstantInt::get(Type::getInt64Ty(V->getContext()), Offset),
-  //                   D };
-  // FIXME: Tarun: Fill in Args with the correct values
-  std::vector<Value*> Args;
-  return CallInst::Create(ValueFn, Args, "", InsertBefore);
+    Value *V, uint64_t Offset,
+    DIVariable D, DIExpression DExpr,
+    Instruction *InsertBefore) {
+  return Builder.insertDbgValueIntrinsic(V, Offset, D, DExpr, InsertBefore);
 }
 
 /// InsertDbgValueIntrinsic - Insert a new llvm.dbg.value intrinsic call.
 Instruction *DebugInfo::InsertDbgValueIntrinsic(
-    Value *V, uint64_t Offset, DIVariable D, BasicBlock *InsertAtEnd) {
-  assert(V && "no value passed to dbg.value");
-  assert(D.Verify() && "invalid DIVariable passed to dbg.value");
-  if (!ValueFn)
-    ValueFn = Intrinsic::getDeclaration(&M, Intrinsic::dbg_value);
-
-  // Line below commented by Tarun in order to get it to build with llvm-3.6
-  // Value *Args[] = { MDNode::get(V->getContext(), V),
-  //                   ConstantInt::get(Type::getInt64Ty(V->getContext()), Offset),
-  //                   D };
-  // FIXME: Tarun: Fill in Args with the correct values
-  std::vector<Value*> Args;
-  return CallInst::Create(ValueFn, Args, "", InsertAtEnd);
+    Value *V, uint64_t Offset,
+    DIVariable D, DIExpression DExpr,
+    BasicBlock *InsertAtEnd) {
+  return Builder.insertDbgValueIntrinsic(V, Offset, D, DExpr, InsertAtEnd);
 }
