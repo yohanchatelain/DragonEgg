@@ -77,6 +77,16 @@ extern "C" {
 
 #define DUMMY_STRINGOP_ALGS {libcall, {{-1, libcall}}}
 
+struct stringop_algs ix86_salgs[2] = {{rep_prefix_1_byte,
+                                       {{-1, rep_prefix_1_byte, 0},
+                                        {-1, rep_prefix_1_byte, 0},
+                                        {-1, rep_prefix_1_byte, 0},
+                                        {-1, rep_prefix_1_byte, 0}}},
+                                      {rep_prefix_1_byte,
+                                       {{-1, rep_prefix_1_byte, 0},
+                                        {-1, rep_prefix_1_byte, 0},
+                                        {-1, rep_prefix_1_byte, 0},
+                                        {-1, rep_prefix_1_byte, 0}}}};
 const
 struct processor_costs ix86_size_cost = {/* costs for tuning for size */
   COSTS_N_BYTES (2),			/* cost of an add instruction */
@@ -130,14 +140,8 @@ struct processor_costs ix86_size_cost = {/* costs for tuning for size */
   COSTS_N_BYTES (2),			/* cost of FABS instruction.  */
   COSTS_N_BYTES (2),			/* cost of FCHS instruction.  */
   COSTS_N_BYTES (2),			/* cost of FSQRT instruction.  */
-  // FIXME: Tarun: Setting the memcpy and memset costs to NULL for the moment
-  // so I can move on. But this needs to be fixed without fail 
-  NULL,
-  NULL,
-  // {{rep_prefix_1_byte, {{-1, rep_prefix_1_byte}}},
-  //  {rep_prefix_1_byte, {{-1, rep_prefix_1_byte}}}},
-  // {{rep_prefix_1_byte, {{-1, rep_prefix_1_byte}}},
-  //  {rep_prefix_1_byte, {{-1, rep_prefix_1_byte}}}},
+  ix86_salgs,             /* cost of memcpy */
+  ix86_salgs,             /* cost of memset */
   1,                                    /* scalar_stmt_cost.  */
   1,                                    /* scalar load_cost.  */
   1,                                    /* scalar_store_cost.  */
@@ -151,6 +155,16 @@ struct processor_costs ix86_size_cost = {/* costs for tuning for size */
   1,                                    /* cond_not_taken_branch_cost.  */
 };
 
+struct stringop_algs i386_salgs[2] = {{rep_prefix_1_byte,
+                                       {{-1, rep_prefix_1_byte, 0},
+                                        {-1, rep_prefix_1_byte, 0},
+                                        {-1, rep_prefix_1_byte, 0},
+                                        {-1, rep_prefix_1_byte, 0}}},
+                                      {libcall,
+                                       {{-1, libcall, 0},
+                                        {-1, libcall, 0},
+                                        {-1, libcall, 0},
+                                        {-1, libcall, 0}}}};
 /* Processor costs (relative to an add) */
 static const
 struct processor_costs i386_cost = {	/* 386 specific costs */
@@ -204,15 +218,9 @@ struct processor_costs i386_cost = {	/* 386 specific costs */
   COSTS_N_INSNS (88),			/* cost of FDIV instruction.  */
   COSTS_N_INSNS (22),			/* cost of FABS instruction.  */
   COSTS_N_INSNS (24),			/* cost of FCHS instruction.  */
-  COSTS_N_INSNS (122),			/* cost of FSQRT instruction.  */
-  // FIXME: Tarun: Setting the memcpy and memset costs to NULL for the moment
-  // so I can move on. But this needs to be fixed without fail 
-  NULL,
-  NULL,
-  // {{rep_prefix_1_byte, {{-1, rep_prefix_1_byte}}},
-  //  DUMMY_STRINGOP_ALGS},
-  // {{rep_prefix_1_byte, {{-1, rep_prefix_1_byte}}},
-  //  DUMMY_STRINGOP_ALGS},
+  COSTS_N_INSNS (122),  	/* cost of FSQRT instruction.  */
+  i386_salgs,             /* cost of memcpy */
+  i386_salgs,             /* cost of memset */
   1,                                    /* scalar_stmt_cost.  */
   1,                                    /* scalar load_cost.  */
   1,                                    /* scalar_store_cost.  */
@@ -226,6 +234,16 @@ struct processor_costs i386_cost = {	/* 386 specific costs */
   1,                                    /* cond_not_taken_branch_cost.  */
 };
 
+struct stringop_algs i486_salgs[2] = {{rep_prefix_4_byte,
+                                       {{-1, rep_prefix_4_byte, 0},
+                                        {-1, rep_prefix_4_byte, 0},
+                                        {-1, rep_prefix_4_byte, 0},
+                                        {-1, rep_prefix_4_byte, 0}}},
+                                      {libcall,
+                                       {{-1, libcall, 0},
+                                        {-1, libcall, 0},
+                                        {-1, libcall, 0},
+                                        {-1, libcall, 0}}}};
 static const
 struct processor_costs i486_cost = {	/* 486 specific costs */
   COSTS_N_INSNS (1),			/* cost of an add instruction */
@@ -281,14 +299,8 @@ struct processor_costs i486_cost = {	/* 486 specific costs */
   COSTS_N_INSNS (3),			/* cost of FABS instruction.  */
   COSTS_N_INSNS (3),			/* cost of FCHS instruction.  */
   COSTS_N_INSNS (83),			/* cost of FSQRT instruction.  */
-  // FIXME: Tarun: Setting the memcpy and memset costs to NULL for the moment
-  // so I can move on. But this needs to be fixed without fail 
-  NULL,
-  NULL,
-  // {{rep_prefix_4_byte, {{-1, rep_prefix_4_byte}}},
-  //  DUMMY_STRINGOP_ALGS},
-  // {{rep_prefix_4_byte, {{-1, rep_prefix_4_byte}}},
-  //  DUMMY_STRINGOP_ALGS},
+  i486_salgs,             /* cost of memcpy */
+  i486_salgs,             /* cost of memset */
   1,                                    /* scalar_stmt_cost.  */
   1,                                    /* scalar load_cost.  */
   1,                                    /* scalar_store_cost.  */
@@ -301,7 +313,26 @@ struct processor_costs i486_cost = {	/* 486 specific costs */
   3,                                    /* cond_taken_branch_cost.  */
   1,                                    /* cond_not_taken_branch_cost.  */
 };
-
+struct stringop_algs pentium_salgs_cpy[2] = {{libcall,
+                                              {{256, rep_prefix_4_byte, 0},
+                                               {-1, libcall, 0},
+                                               {-1, libcall, 0},
+                                               {-1, libcall, 0}}},
+                                             {libcall,
+                                              {{-1, libcall, 0},
+                                               {-1, libcall, 0},
+                                               {-1, libcall, 0},
+                                               {-1, libcall, 0}}}};
+struct stringop_algs pentium_salgs_set[2] = {{libcall,
+                                              {{-1, rep_prefix_4_byte, 0},
+                                               {-1, libcall, 0},
+                                               {-1, libcall, 0},
+                                               {-1, libcall, 0}}},
+                                             {libcall,
+                                              {{-1, libcall, 0},
+                                               {-1, libcall, 0},
+                                               {-1, libcall, 0},
+                                               {-1, libcall, 0}}}};
 static const
 struct processor_costs pentium_cost = {
   COSTS_N_INSNS (1),			/* cost of an add instruction */
@@ -355,14 +386,8 @@ struct processor_costs pentium_cost = {
   COSTS_N_INSNS (1),			/* cost of FABS instruction.  */
   COSTS_N_INSNS (1),			/* cost of FCHS instruction.  */
   COSTS_N_INSNS (70),			/* cost of FSQRT instruction.  */
-  // FIXME: Tarun: Setting the memcpy and memset costs to NULL for the moment
-  // so I can move on. But this needs to be fixed without fail 
-  NULL,
-  NULL,
-  // {{libcall, {{256, rep_prefix_4_byte}, {-1, libcall}}},
-  //  DUMMY_STRINGOP_ALGS},
-  // {{libcall, {{-1, rep_prefix_4_byte}}},
-  //  DUMMY_STRINGOP_ALGS},
+  pentium_salgs_cpy,      /* cost of memcpy */
+  pentium_salgs_set,      /* cost of memset */
   1,                                    /* scalar_stmt_cost.  */
   1,                                    /* scalar load_cost.  */
   1,                                    /* scalar_store_cost.  */
@@ -376,6 +401,31 @@ struct processor_costs pentium_cost = {
   1,                                    /* cond_not_taken_branch_cost.  */
 };
 
+  /* PentiumPro has optimized rep instructions for blocks aligned by 8 bytes (we ensure
+     the alignment).  For small blocks inline loop is still a noticeable win, for bigger
+     blocks either rep movsl or rep movsb is way to go.  Rep movsb has apparently
+     more expensive startup time in CPU, but after 4K the difference is down in the noise.
+   */
+struct stringop_algs pentiumpro_salgs_cpy[2] = {{rep_prefix_4_byte,
+                                                 {{128, loop, 0},
+                                                  {1024, unrolled_loop, 0},
+                                                  {8192, rep_prefix_4_byte, 0},
+                                                  {-1, rep_prefix_1_byte, 0}}},
+                                                {libcall,
+                                                 {{-1, libcall, 0},
+                                                  {-1, libcall, 0},
+                                                  {-1, libcall, 0},
+                                                  {-1, libcall, 0}}}};
+struct stringop_algs pentiumpro_salgs_set[2] = {{rep_prefix_4_byte,
+                                                 {{1024, unrolled_loop, 0},
+                                                  {8192, rep_prefix_4_byte, 0},
+                                                  {-1, libcall, 0},
+                                                  {-1, libcall, 0}}},
+                                                {libcall,
+                                                 {{-1, libcall, 0},
+                                                  {-1, libcall, 0},
+                                                  {-1, libcall, 0},
+                                                  {-1, libcall, 0}}}};
 static const
 struct processor_costs pentiumpro_cost = {
   COSTS_N_INSNS (1),			/* cost of an add instruction */
@@ -429,21 +479,8 @@ struct processor_costs pentiumpro_cost = {
   COSTS_N_INSNS (2),			/* cost of FABS instruction.  */
   COSTS_N_INSNS (2),			/* cost of FCHS instruction.  */
   COSTS_N_INSNS (56),			/* cost of FSQRT instruction.  */
-  /* PentiumPro has optimized rep instructions for blocks aligned by 8 bytes (we ensure
-     the alignment).  For small blocks inline loop is still a noticeable win, for bigger
-     blocks either rep movsl or rep movsb is way to go.  Rep movsb has apparently
-     more expensive startup time in CPU, but after 4K the difference is down in the noise.
-   */
-  // FIXME: Tarun: Setting the memcpy and memset costs to NULL for the moment
-  // so I can move on. But this needs to be fixed without fail 
-  NULL,
-  NULL,
-  // {{rep_prefix_4_byte, {{128, loop}, {1024, unrolled_loop},
-	// 		{8192, rep_prefix_4_byte}, {-1, rep_prefix_1_byte}}},
-  //  DUMMY_STRINGOP_ALGS},
-  // {{rep_prefix_4_byte, {{1024, unrolled_loop},
-  // 		        {8192, rep_prefix_4_byte}, {-1, libcall}}},
-  //  DUMMY_STRINGOP_ALGS},
+  pentiumpro_salgs_cpy,   /* cost of memcpy */
+  pentiumpro_salgs_set,   /* cost of memset */
   1,                                    /* scalar_stmt_cost.  */
   1,                                    /* scalar load_cost.  */
   1,                                    /* scalar_store_cost.  */
@@ -457,6 +494,16 @@ struct processor_costs pentiumpro_cost = {
   1,                                    /* cond_not_taken_branch_cost.  */
 };
 
+struct stringop_algs geode_salgs[2] = {{libcall,
+                                        {{256, rep_prefix_4_byte, 0},
+                                         {-1, libcall, 0},
+                                         {-1, libcall, 0},
+                                         {-1, libcall, 0}}},
+                                       {libcall,
+                                        {{-1, libcall, 0},
+                                         {-1, libcall, 0},
+                                         {-1, libcall, 0},
+                                         {-1, libcall, 0}}}};
 static const
 struct processor_costs geode_cost = {
   COSTS_N_INSNS (1),			/* cost of an add instruction */
@@ -511,14 +558,8 @@ struct processor_costs geode_cost = {
   COSTS_N_INSNS (1),			/* cost of FABS instruction.  */
   COSTS_N_INSNS (1),			/* cost of FCHS instruction.  */
   COSTS_N_INSNS (54),			/* cost of FSQRT instruction.  */
-  // FIXME: Tarun: Setting the memcpy and memset costs to NULL for the moment
-  // so I can move on. But this needs to be fixed without fail 
-  NULL,
-  NULL,
-  // {{libcall, {{256, rep_prefix_4_byte}, {-1, libcall}}},
-  //  DUMMY_STRINGOP_ALGS},
-  // {{libcall, {{256, rep_prefix_4_byte}, {-1, libcall}}},
-  //  DUMMY_STRINGOP_ALGS},
+  geode_salgs,            /* cost of memcpy */
+  geode_salgs,            /* cost of memset */
   1,                                    /* scalar_stmt_cost.  */
   1,                                    /* scalar load_cost.  */
   1,                                    /* scalar_store_cost.  */
@@ -532,6 +573,16 @@ struct processor_costs geode_cost = {
   1,                                    /* cond_not_taken_branch_cost.  */
 };
 
+struct stringop_algs k6_salgs[2] = {{libcall,
+                                     {{256, rep_prefix_4_byte, 0},
+                                      {-1, libcall, 0},
+                                      {-1, libcall, 0},
+                                      {-1, libcall, 0}}},
+                                    {libcall,
+                                     {{-1, libcall, 0},
+                                      {-1, libcall, 0},
+                                      {-1, libcall, 0},
+                                      {-1, libcall, 0}}}};
 static const
 struct processor_costs k6_cost = {
   COSTS_N_INSNS (1),			/* cost of an add instruction */
@@ -588,14 +639,8 @@ struct processor_costs k6_cost = {
   COSTS_N_INSNS (2),			/* cost of FABS instruction.  */
   COSTS_N_INSNS (2),			/* cost of FCHS instruction.  */
   COSTS_N_INSNS (56),			/* cost of FSQRT instruction.  */
-  // FIXME: Tarun: Setting the memcpy and memset costs to NULL for the moment
-  // so I can move on. But this needs to be fixed without fail 
-  NULL,
-  NULL,
-  // {{libcall, {{256, rep_prefix_4_byte}, {-1, libcall}}},
-  //  DUMMY_STRINGOP_ALGS},
-  // {{libcall, {{256, rep_prefix_4_byte}, {-1, libcall}}},
-  //  DUMMY_STRINGOP_ALGS},
+  k6_salgs,               /* cost of memcpy */
+  k6_salgs,               /* cost of memset */
   1,                                    /* scalar_stmt_cost.  */
   1,                                    /* scalar load_cost.  */
   1,                                    /* scalar_store_cost.  */
@@ -609,6 +654,19 @@ struct processor_costs k6_cost = {
   1,                                    /* cond_not_taken_branch_cost.  */
 };
 
+/* For some reason, Athlon deals better with REP prefix (relative to loops)
+   compared to K8. Alignment becomes important after 8 bytes for memcpy and
+   128 bytes for memset.  */
+struct stringop_algs athlon_salgs[2] = {{libcall,
+                                         {{2048, rep_prefix_4_byte, 0},
+                                          {-1, libcall, 0},
+                                          {-1, libcall, 0},
+                                          {-1, libcall, 0}}},
+                                        {libcall,
+                                         {{-1, libcall, 0},
+                                          {-1, libcall, 0},
+                                          {-1, libcall, 0},
+                                          {-1, libcall, 0}}}};
 static const
 struct processor_costs athlon_cost = {
   COSTS_N_INSNS (1),			/* cost of an add instruction */
@@ -662,17 +720,8 @@ struct processor_costs athlon_cost = {
   COSTS_N_INSNS (2),			/* cost of FABS instruction.  */
   COSTS_N_INSNS (2),			/* cost of FCHS instruction.  */
   COSTS_N_INSNS (35),			/* cost of FSQRT instruction.  */
-  /* For some reason, Athlon deals better with REP prefix (relative to loops)
-     compared to K8. Alignment becomes important after 8 bytes for memcpy and
-     128 bytes for memset.  */
-  // FIXME: Tarun: Setting the memcpy and memset costs to NULL for the moment
-  // so I can move on. But this needs to be fixed without fail 
-  NULL,
-  NULL,
-  // {{libcall, {{2048, rep_prefix_4_byte}, {-1, libcall}}},
-  //  DUMMY_STRINGOP_ALGS},
-  // {{libcall, {{2048, rep_prefix_4_byte}, {-1, libcall}}},
-  //  DUMMY_STRINGOP_ALGS},
+  athlon_salgs,           /* cost of memcpy */
+  athlon_salgs,           /* cost of memset */
   1,                                    /* scalar_stmt_cost.  */
   1,                                    /* scalar load_cost.  */
   1,                                    /* scalar_store_cost.  */
@@ -686,6 +735,29 @@ struct processor_costs athlon_cost = {
   1,                                    /* cond_not_taken_branch_cost.  */
 };
 
+/* K8 has optimized REP instruction for medium sized blocks, but for very small
+   blocks it is better to use loop. For large blocks, libcall can do
+   nontemporary accesses and beat inline considerably.  */
+struct stringop_algs k8_salgs_cpy[2] = {{libcall,
+                                         {{6, loop, 0},
+                                          {14, unrolled_loop, 0},
+                                          {-1, rep_prefix_4_byte, 0},
+                                          {-1, libcall, 0}}},
+                                        {libcall,
+                                         {{16, loop, 0},
+                                          {8192, unrolled_loop, 0},
+                                          {-1, libcall, 0},
+                                          {-1, libcall, 0}}}};
+struct stringop_algs k8_salgs_set[2] = {{libcall,
+                                         {{8, loop, 0},
+                                          {24, unrolled_loop, 0},
+                                          {2048, rep_prefix_4_byte, 0},
+                                          {-1, libcall, 0}}},
+                                        {libcall,
+                                         {{48, loop, 0},
+                                          {8192, unrolled_loop, 0},
+                                          {-1, libcall, 0},
+                                          {-1, libcall, 0}}}};
 static const
 struct processor_costs k8_cost = {
   COSTS_N_INSNS (1),			/* cost of an add instruction */
@@ -744,18 +816,8 @@ struct processor_costs k8_cost = {
   COSTS_N_INSNS (2),			/* cost of FABS instruction.  */
   COSTS_N_INSNS (2),			/* cost of FCHS instruction.  */
   COSTS_N_INSNS (35),			/* cost of FSQRT instruction.  */
-  /* K8 has optimized REP instruction for medium sized blocks, but for very small
-     blocks it is better to use loop. For large blocks, libcall can do
-     nontemporary accesses and beat inline considerably.  */
-  // FIXME: Tarun: Setting the memcpy and memset costs to NULL for the moment
-  // so I can move on. But this needs to be fixed without fail 
-  NULL,
-  NULL,
-  // {{libcall, {{6, loop}, {14, unrolled_loop}, {-1, rep_prefix_4_byte}}},
-  //  {libcall, {{16, loop}, {8192, rep_prefix_8_byte}, {-1, libcall}}}},
-  // {{libcall, {{8, loop}, {24, unrolled_loop},
-	//       {2048, rep_prefix_4_byte}, {-1, libcall}}},
-  //  {libcall, {{48, unrolled_loop}, {8192, rep_prefix_8_byte}, {-1, libcall}}}},
+  k8_salgs_cpy,           /* cost of memcpy */
+  k8_salgs_set,           /* cost of memset */
   4,                                    /* scalar_stmt_cost.  */
   2,                                    /* scalar load_cost.  */
   2,                                    /* scalar_store_cost.  */
@@ -769,6 +831,29 @@ struct processor_costs k8_cost = {
   2,                                    /* cond_not_taken_branch_cost.  */
 };
 
+/* AMDFAM10 has optimized REP instruction for medium sized blocks, but for
+   very small blocks it is better to use loop. For large blocks, libcall can
+   do nontemporary accesses and beat inline considerably.  */
+struct stringop_algs amdfam10_salgs_cpy[2] = {{libcall,
+                                               {{6, loop, 0},
+                                                {14, unrolled_loop, 0},
+                                                {-1, rep_prefix_4_byte, 0},
+                                                {-1, libcall, 0}}},
+                                              {libcall,
+                                               {{16, loop, 0},
+                                                {8192, unrolled_loop, 0},
+                                                {-1, libcall, 0},
+                                                {-1, libcall, 0}}}};
+struct stringop_algs amdfam10_salgs_set[2] = {{libcall,
+                                               {{8, loop, 0},
+                                                {24, unrolled_loop, 0},
+                                                {2048, rep_prefix_4_byte, 0},
+                                                {-1, libcall, 0}}},
+                                              {libcall,
+                                               {{48, loop, 0},
+                                                {8192, unrolled_loop, 0},
+                                                {-1, libcall, 0},
+                                                {-1, libcall, 0}}}};
 struct processor_costs amdfam10_cost = {
   COSTS_N_INSNS (1),                    /* cost of an add instruction */
   COSTS_N_INSNS (2),                    /* cost of a lea instruction */
@@ -834,19 +919,8 @@ struct processor_costs amdfam10_cost = {
   COSTS_N_INSNS (2),			/* cost of FABS instruction.  */
   COSTS_N_INSNS (2),			/* cost of FCHS instruction.  */
   COSTS_N_INSNS (35),			/* cost of FSQRT instruction.  */
-
-  /* AMDFAM10 has optimized REP instruction for medium sized blocks, but for
-     very small blocks it is better to use loop. For large blocks, libcall can
-     do nontemporary accesses and beat inline considerably.  */
-  // FIXME: Tarun: Setting the memcpy and memset costs to NULL for the moment
-  // so I can move on. But this needs to be fixed without fail 
-  NULL,
-  NULL,
-  // {{libcall, {{6, loop}, {14, unrolled_loop}, {-1, rep_prefix_4_byte}}},
-  //  {libcall, {{16, loop}, {8192, rep_prefix_8_byte}, {-1, libcall}}}},
-  // {{libcall, {{8, loop}, {24, unrolled_loop},
-	//       {2048, rep_prefix_4_byte}, {-1, libcall}}},
-  //  {libcall, {{48, unrolled_loop}, {8192, rep_prefix_8_byte}, {-1, libcall}}}},
+  amdfam10_salgs_cpy,     /* cost of memcpy */
+  amdfam10_salgs_set,     /* cost memset */
   4,                                    /* scalar_stmt_cost.  */
   2,                                    /* scalar load_cost.  */
   2,                                    /* scalar_store_cost.  */
@@ -860,6 +934,26 @@ struct processor_costs amdfam10_cost = {
   1,                                    /* cond_not_taken_branch_cost.  */
 };
 
+struct stringop_algs pentium4_salgs_cpy[2] = {{libcall,
+                                               {{12, loop_1_byte, 0},
+                                                {-1, rep_prefix_4_byte, 0},
+                                                {-1, libcall, 0},
+                                                {-1, libcall, 0}}},
+                                              {libcall,
+                                               {{-1, libcall, 0},
+                                                {-1, libcall, 0},
+                                                {-1, libcall, 0},
+                                                {-1, libcall, 0}}}};
+struct stringop_algs pentium4_salgs_set[2] = {{libcall,
+                                               {{6, loop_1_byte, 0},
+                                                {48, loop, 0},
+                                                {20480, rep_prefix_4_byte, 0},
+                                                {-1, libcall, 0}}},
+                                              {libcall,
+                                               {{-1, libcall, 0},
+                                                {-1, libcall, 0},
+                                                {-1, libcall, 0},
+                                                {-1, libcall, 0}}}};
 static const
 struct processor_costs pentium4_cost = {
   COSTS_N_INSNS (1),			/* cost of an add instruction */
@@ -913,15 +1007,8 @@ struct processor_costs pentium4_cost = {
   COSTS_N_INSNS (2),			/* cost of FABS instruction.  */
   COSTS_N_INSNS (2),			/* cost of FCHS instruction.  */
   COSTS_N_INSNS (43),			/* cost of FSQRT instruction.  */
-  // FIXME: Tarun: Setting the memcpy and memset costs to NULL for the moment
-  // so I can move on. But this needs to be fixed without fail 
-  NULL,
-  NULL,
-  // {{libcall, {{12, loop_1_byte}, {-1, rep_prefix_4_byte}}},
-  //  DUMMY_STRINGOP_ALGS},
-  // {{libcall, {{6, loop_1_byte}, {48, loop}, {20480, rep_prefix_4_byte},
-  //  {-1, libcall}}},
-  //  DUMMY_STRINGOP_ALGS},
+  pentium4_salgs_cpy,     /* cost of memcpy */
+  pentium4_salgs_set,     /* cost of memset */
   1,                                    /* scalar_stmt_cost.  */
   1,                                    /* scalar load_cost.  */
   1,                                    /* scalar_store_cost.  */
@@ -935,6 +1022,26 @@ struct processor_costs pentium4_cost = {
   1,                                    /* cond_not_taken_branch_cost.  */
 };
 
+struct stringop_algs nocona_salgs_cpy[2] = {{libcall,
+                                             {{12, loop_1_byte, 0},
+                                              {-1, rep_prefix_4_byte, 0},
+                                              {-1, libcall, 0},
+                                              {-1, libcall, 0}}},
+                                            {libcall,
+                                             {{32, loop, 0},
+                                              {20000, rep_prefix_8_byte, 0},
+                                              {100000, unrolled_loop, 0},
+                                              {-1, libcall, 0}}}};
+struct stringop_algs nocona_salgs_set[2] = {{libcall,
+                                             {{6, loop_1_byte, 0},
+                                              {48, loop, 0},
+                                              {20480, rep_prefix_4_byte, 0},
+                                              {-1, libcall, 0}}},
+                                            {libcall,
+                                             {{24, loop, 0},
+                                              {64, unrolled_loop, 0},
+                                              {8192, rep_prefix_8_byte, 0},
+                                              {-1, libcall, 0}}}};
 static const
 struct processor_costs nocona_cost = {
   COSTS_N_INSNS (1),			/* cost of an add instruction */
@@ -988,17 +1095,8 @@ struct processor_costs nocona_cost = {
   COSTS_N_INSNS (3),			/* cost of FABS instruction.  */
   COSTS_N_INSNS (3),			/* cost of FCHS instruction.  */
   COSTS_N_INSNS (44),			/* cost of FSQRT instruction.  */
-  // FIXME: Tarun: Setting the memcpy and memset costs to NULL for the moment
-  // so I can move on. But this needs to be fixed without fail 
-  NULL,
-  NULL,
-  // {{libcall, {{12, loop_1_byte}, {-1, rep_prefix_4_byte}}},
-  //  {libcall, {{32, loop}, {20000, rep_prefix_8_byte},
-	//       {100000, unrolled_loop}, {-1, libcall}}}},
-  // {{libcall, {{6, loop_1_byte}, {48, loop}, {20480, rep_prefix_4_byte},
-  //  {-1, libcall}}},
-  //  {libcall, {{24, loop}, {64, unrolled_loop},
-	//       {8192, rep_prefix_8_byte}, {-1, libcall}}}},
+  nocona_salgs_cpy,       /* cost of memcpy */
+  nocona_salgs_set,       /* cost of memset */
   1,                                    /* scalar_stmt_cost.  */
   1,                                    /* scalar load_cost.  */
   1,                                    /* scalar_store_cost.  */
@@ -1012,6 +1110,26 @@ struct processor_costs nocona_cost = {
   1,                                    /* cond_not_taken_branch_cost.  */
 };
 
+struct stringop_algs core2_salgs_cpy[2] = {{libcall,
+                                           {{11, loop, 0},
+                                            {-1, rep_prefix_4_byte, 0},
+                                            {-1, libcall, 0},
+                                            {-1, libcall, 0}}},
+                                          {libcall,
+                                           {{32, loop, 0},
+                                            {64, rep_prefix_4_byte, 0},
+                                            {8192, rep_prefix_8_byte, 0},
+                                            {-1, libcall, 0}}}};
+struct stringop_algs core2_salgs_set[2] = {{libcall,
+                                               {{8, loop, 0},
+                                                {15, unrolled_loop, 0},
+                                                {2048, rep_prefix_4_byte, 0},
+                                                {-1, libcall, 0}}},
+                                              {libcall,
+                                               {{24, loop, 0},
+                                                {32, unrolled_loop, 0},
+                                                {8192, rep_prefix_8_byte, 0},
+                                                {-1, libcall, 0}}}};
 static const
 struct processor_costs core2_cost = {
   COSTS_N_INSNS (1),			/* cost of an add instruction */
@@ -1065,17 +1183,8 @@ struct processor_costs core2_cost = {
   COSTS_N_INSNS (1),			/* cost of FABS instruction.  */
   COSTS_N_INSNS (1),			/* cost of FCHS instruction.  */
   COSTS_N_INSNS (58),			/* cost of FSQRT instruction.  */
-  // FIXME: Tarun: Setting the memcpy and memset costs to NULL for the moment
-  // so I can move on. But this needs to be fixed without fail 
-  NULL,
-  NULL,
-  // {{libcall, {{11, loop}, {-1, rep_prefix_4_byte}}},
-  //  {libcall, {{32, loop}, {64, rep_prefix_4_byte},
-	//       {8192, rep_prefix_8_byte}, {-1, libcall}}}},
-  // {{libcall, {{8, loop}, {15, unrolled_loop},
-	//       {2048, rep_prefix_4_byte}, {-1, libcall}}},
-  //  {libcall, {{24, loop}, {32, unrolled_loop},
-	//       {8192, rep_prefix_8_byte}, {-1, libcall}}}},
+  core2_salgs_cpy,        /* cost of memcpy */
+  core2_salgs_set,        /* cost of memset */
   1,                                    /* scalar_stmt_cost.  */
   1,                                    /* scalar load_cost.  */
   1,                                    /* scalar_store_cost.  */
@@ -1089,6 +1198,26 @@ struct processor_costs core2_cost = {
   1,                                    /* cond_not_taken_branch_cost.  */
 };
 
+struct stringop_algs atom_salgs_cpy[2] = {{libcall,
+                                           {{11, loop, 0},
+                                            {-1, rep_prefix_4_byte, 0},
+                                            {-1, libcall, 0},
+                                            {-1, libcall, 0}}},
+                                          {libcall,
+                                           {{32, loop, 0},
+                                            {64, rep_prefix_4_byte, 0},
+                                            {8192, rep_prefix_8_byte, 0},
+                                            {-1, libcall, 0}}}};
+struct stringop_algs atom_salgs_set[2] = {{libcall,
+                                               {{8, loop, 0},
+                                                {15, unrolled_loop, 0},
+                                                {2048, rep_prefix_4_byte, 0},
+                                                {-1, libcall, 0}}},
+                                              {libcall,
+                                               {{24, loop, 0},
+                                                {32, unrolled_loop, 0},
+                                                {8192, rep_prefix_8_byte, 0},
+                                                {-1, libcall, 0}}}};
 static const
 struct processor_costs atom_cost = {
   COSTS_N_INSNS (1),			/* cost of an add instruction */
@@ -1142,17 +1271,8 @@ struct processor_costs atom_cost = {
   COSTS_N_INSNS (8),			/* cost of FABS instruction.  */
   COSTS_N_INSNS (8),			/* cost of FCHS instruction.  */
   COSTS_N_INSNS (40),			/* cost of FSQRT instruction.  */
-  // FIXME: Tarun: Setting the memcpy and memset costs to NULL for the moment
-  // so I can move on. But this needs to be fixed without fail 
-  NULL,
-  NULL,
-  // {{libcall, {{11, loop}, {-1, rep_prefix_4_byte}}},
-  //  {libcall, {{32, loop}, {64, rep_prefix_4_byte},
-  //         {8192, rep_prefix_8_byte}, {-1, libcall}}}},
-  // {{libcall, {{8, loop}, {15, unrolled_loop},
-  //         {2048, rep_prefix_4_byte}, {-1, libcall}}},
-  //  {libcall, {{24, loop}, {32, unrolled_loop},
-  //         {8192, rep_prefix_8_byte}, {-1, libcall}}}},
+  atom_salgs_cpy,         /* cost of memcpy */
+  atom_salgs_set,         /* cost of memset */
   1,                                    /* scalar_stmt_cost.  */
   1,                                    /* scalar load_cost.  */
   1,                                    /* scalar_store_cost.  */
@@ -1166,6 +1286,16 @@ struct processor_costs atom_cost = {
   1,                                    /* cond_not_taken_branch_cost.  */
 };
 
+struct stringop_algs generic64_salgs[2] = {{libcall,
+                                            {{-1, libcall, 0},
+                                             {-1, libcall, 0},
+                                             {-1, libcall, 0},
+                                             {-1, libcall, 0}}},
+                                           {libcall,
+                                            {{32, loop, 0},
+                                             {8192, rep_prefix_8_byte, 0},
+                                             {-1, libcall, 0},
+                                             {-1, libcall, 0}}}};
 /* Generic64 should produce code tuned for Nocona and K8.  */
 static const
 struct processor_costs generic64_cost = {
@@ -1226,14 +1356,8 @@ struct processor_costs generic64_cost = {
   COSTS_N_INSNS (8),			/* cost of FABS instruction.  */
   COSTS_N_INSNS (8),			/* cost of FCHS instruction.  */
   COSTS_N_INSNS (40),			/* cost of FSQRT instruction.  */
-  // FIXME: Tarun: Setting the memcpy and memset costs to NULL for the moment
-  // so I can move on. But this needs to be fixed without fail 
-  NULL,
-  NULL,
-  // {DUMMY_STRINGOP_ALGS,
-  //  {libcall, {{32, loop}, {8192, rep_prefix_8_byte}, {-1, libcall}}}},
-  // {DUMMY_STRINGOP_ALGS,
-  //  {libcall, {{32, loop}, {8192, rep_prefix_8_byte}, {-1, libcall}}}},
+  generic64_salgs,        /* cost of memcpy */
+  generic64_salgs,        /* cost of memset */
   1,                                    /* scalar_stmt_cost.  */
   1,                                    /* scalar load_cost.  */
   1,                                    /* scalar_store_cost.  */
@@ -1247,6 +1371,16 @@ struct processor_costs generic64_cost = {
   1,                                    /* cond_not_taken_branch_cost.  */
 };
 
+struct stringop_algs generic32_salgs[2] = {{libcall,
+                                            {{32, loop, 0},
+                                             {8192, rep_prefix_4_byte, 0},
+                                             {-1, libcall, 0},
+                                             {-1, libcall, 0}}},
+                                           {libcall,
+                                            {{-1, libcall, 0},
+                                             {-1, libcall, 0},
+                                             {-1, libcall, 0},
+                                             {-1, libcall, 0}}}};
 /* Generic32 should produce code tuned for Athlon, PPro, Pentium4, Nocona and K8.  */
 static const
 struct processor_costs generic32_cost = {
@@ -1301,14 +1435,8 @@ struct processor_costs generic32_cost = {
   COSTS_N_INSNS (8),			/* cost of FABS instruction.  */
   COSTS_N_INSNS (8),			/* cost of FCHS instruction.  */
   COSTS_N_INSNS (40),			/* cost of FSQRT instruction.  */
-  // FIXME: Tarun: Setting the memcpy and memset costs to NULL for the moment
-  // so I can move on. But this needs to be fixed without fail 
-  NULL,
-  NULL,
-  // {{libcall, {{32, loop}, {8192, rep_prefix_4_byte}, {-1, libcall}}},
-  //  DUMMY_STRINGOP_ALGS},
-  // {{libcall, {{32, loop}, {8192, rep_prefix_4_byte}, {-1, libcall}}},
-  //  DUMMY_STRINGOP_ALGS},
+  generic32_salgs,        /* cost of memcpy */
+  generic32_salgs,        /* cost of memset */
   1,                                    /* scalar_stmt_cost.  */
   1,                                    /* scalar load_cost.  */
   1,                                    /* scalar_store_cost.  */
