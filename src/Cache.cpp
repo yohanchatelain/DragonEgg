@@ -43,7 +43,15 @@ extern "C" {
 // Stop GCC declaring 'getopt' as it can clash with the system's declaration.
 #undef HAVE_DECL_GETOPT
 #include "system.h"
+#include "symtab.h"
 #include "coretypes.h"
+#include "hash-set.h"
+#include "vec.h"
+#include "input.h"
+#include "alias.h"
+#include "inchash.h"  
+#include "double-int.h"
+
 #include "tm.h"
 #include "tree.h"
 
@@ -116,11 +124,7 @@ static GTY((if_marked("tree2WeakVH_marked_p"), param_is(struct tree2WeakVH)))
 #ifndef ENABLE_BUILD_WITH_CXX
 extern "C" {
 #endif
-#if (GCC_MINOR > 5)
 #include "dragonegg/gt-cache-4.6.inc"
-#else
-#include "dragonegg/gt-cache-4.5.inc"
-#endif
 #ifndef ENABLE_BUILD_WITH_CXX
 } // extern "C"
 #endif
@@ -145,12 +149,7 @@ void setCachedInteger(tree t, int Val) {
   assert(slot && "Failed to create hash table slot!");
 
   if (!*slot) {
-    *slot =
-#if (GCC_MINOR > 5)
-        ggc_alloc_tree2int();
-#else
-    GGC_NEW(struct tree2int);
-#endif
+    *slot = ggc_alloc_tree2int();
     (*slot)->base.from = t;
   }
 
@@ -182,12 +181,7 @@ void setCachedType(tree t, Type *Ty) {
   assert(slot && "Failed to create hash table slot!");
 
   if (!*slot) {
-    *slot =
-#if (GCC_MINOR > 5)
-        ggc_alloc_tree2Type();
-#else
-    GGC_NEW(struct tree2Type);
-#endif
+    *slot = ggc_alloc_tree2Type();
     (*slot)->base.from = t;
   }
 
@@ -233,12 +227,7 @@ void setCachedValue(tree t, Value *V) {
     return;
   }
 
-  *slot =
-#if (GCC_MINOR > 5)
-      ggc_alloc_tree2WeakVH();
-#else
-  GGC_NEW(struct tree2WeakVH);
-#endif
+  *slot = ggc_alloc_tree2WeakVH();
   (*slot)->base.from = t;
   WeakVH *W = new (&(*slot)->V) WeakVH(V);
   assert(W == &(*slot)->V && "Pointer was displaced!");

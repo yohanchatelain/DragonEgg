@@ -45,7 +45,15 @@ extern "C" {
 // Stop GCC declaring 'getopt' as it can clash with the system's declaration.
 #undef HAVE_DECL_GETOPT
 #include "system.h"
+#include "symtab.h"
 #include "coretypes.h"
+#include "hash-set.h"
+#include "vec.h"
+#include "input.h"
+#include "alias.h"
+#include "inchash.h"  
+#include "double-int.h"
+#include "libiberty.h"
 #include "tm.h"
 #include "tree.h"
 
@@ -54,12 +62,8 @@ extern "C" {
 } // extern "C"
 #endif
 
-//Below lines added by Arun in attempt to compile using gcc-4.9
-#if (GCC_MINOR == 9)
 #include "print-tree.h"
 #include "calls.h"
-#endif
-//End of lines added by Arun
 
 // Trees header.
 #include "dragonegg/Trees.h"
@@ -167,9 +171,7 @@ public:
     case ENUMERAL_TYPE:
     case FIXED_POINT_TYPE:
     case INTEGER_TYPE:
-#if (GCC_MINOR > 5)
     case NULLPTR_TYPE:
-#endif
     case OFFSET_TYPE:
     case REAL_TYPE:
     case VOID_TYPE:
@@ -221,10 +223,6 @@ public:
 /// if the array has variable or unknown length.
 uint64_t ArrayLengthOf(tree type) {
   assert(isa<ARRAY_TYPE>(type) && "Only for array types!");
-  // Workaround for missing sanity checks in older versions of GCC.
-  if ((GCC_MINOR == 5 && GCC_MICRO < 3) || (GCC_MINOR == 6 && GCC_MICRO < 2))
-    if (!TYPE_DOMAIN(type) || !TYPE_MAX_VALUE(TYPE_DOMAIN(type)))
-      return NO_LENGTH;
   tree range = array_type_nelts(type); // The number of elements minus one.
   // Bail out if the array has variable or unknown length.
   if (!isInt64(range, false))
@@ -463,10 +461,8 @@ Type *getRegType(tree type) {
     return StructType::get(EltTy, EltTy, NULL);
   }
 
-#if (GCC_MINOR > 5)
   case NULLPTR_TYPE:
     return GetUnitPointerType(Context, TYPE_ADDR_SPACE(type));
-#endif
 
   case OFFSET_TYPE:
     return getDataLayout().getIntPtrType(Context, TYPE_ADDR_SPACE(type));
@@ -1269,9 +1265,7 @@ static bool mayRecurse(tree type) {
   case ENUMERAL_TYPE:
   case FIXED_POINT_TYPE:
   case INTEGER_TYPE:
-#if (GCC_MINOR > 5)
   case NULLPTR_TYPE:
-#endif
   case OFFSET_TYPE:
   case REAL_TYPE:
   case VOID_TYPE:
@@ -1433,11 +1427,9 @@ static Type *ConvertTypeNonRecursive(tree type) {
     break;
   }
 
-#if (GCC_MINOR > 5)
   case NULLPTR_TYPE:
     Ty = GetUnitPointerType(Context, TYPE_ADDR_SPACE(type));
     break;
-#endif
 
   case OFFSET_TYPE: {
     // Handle OFFSET_TYPE specially.  This is used for pointers to members,

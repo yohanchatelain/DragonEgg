@@ -37,7 +37,15 @@ extern "C" {
 // Stop GCC declaring 'getopt' as it can clash with the system's declaration.
 #undef HAVE_DECL_GETOPT
 #include "system.h"
+#include "symtab.h"
 #include "coretypes.h"
+#include "hash-set.h"
+#include "vec.h"
+#include "input.h"
+#include "alias.h"
+#include "inchash.h"  
+#include "double-int.h"
+#include "libiberty.h"
 #include "tm.h"
 #include "tree.h"
 
@@ -163,7 +171,7 @@ std::string getDescriptiveName(const_tree t) {
 /// the truncated value must sign-/zero-extend to the original.
 APInt getAPIntValue(const_tree exp, unsigned Bitwidth) {
   assert(isa<INTEGER_CST>(exp) && "Expected an integer constant!");
-  double_int val = tree_to_double_int(exp);
+  widest_int val = wi::to_widest(exp);
   unsigned DefaultWidth = TYPE_PRECISION(TREE_TYPE(exp));
 
   APInt DefaultValue;
@@ -203,18 +211,12 @@ bool isInt64(const_tree t, bool Unsigned) {
   if (!t)
     return false;
   if (HOST_BITS_PER_WIDE_INT == 64)
-#if (GCC_MINOR <= 8)     /* Condition added by Arun */
-    return host_integerp(t, Unsigned) && !TREE_OVERFLOW(t);
-//Below lines added by Arun
-#else
   {
     if (Unsigned)
       return tree_fits_uhwi_p(t) && !TREE_OVERFLOW(t);
     else
       return tree_fits_shwi_p(t) && !TREE_OVERFLOW(t);
   }
-#endif
-//End of lines added by Arun
   assert(HOST_BITS_PER_WIDE_INT == 32 &&
          "Only 32- and 64-bit hosts supported!");
   return (isa<INTEGER_CST>(t) && !TREE_OVERFLOW(t)) &&

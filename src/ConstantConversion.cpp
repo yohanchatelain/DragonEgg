@@ -47,24 +47,26 @@ extern "C" {
 // Stop GCC declaring 'getopt' as it can clash with the system's declaration.
 #undef HAVE_DECL_GETOPT
 #include "system.h"
+#include "symtab.h"
 #include "coretypes.h"
+#include "hash-set.h"
+#include "vec.h"
+#include "input.h"
+#include "alias.h"
+#include "inchash.h"  
+#include "double-int.h"
 #include "tm.h"
 #include "tree.h"
+#include "machmode.h"
+#include "fold-const.h"
 
-#if (GCC_MINOR < 7)
-#include "flags.h" // For POINTER_TYPE_OVERFLOW_UNDEFINED.
-#endif
 #include "tm_p.h" // For CONSTANT_ALIGNMENT.
 #ifndef ENABLE_BUILD_WITH_CXX
 } // extern "C"
 #endif
 
-//Below lines added by Arun in attempt to compile using gcc-4.9
-#if (GCC_MINOR == 9)
 #include "stor-layout.h"
 #include "print-tree.h"
-#endif
-//End of lines added by Arun
 
 // Trees header.
 #include "dragonegg/Trees.h"
@@ -545,9 +547,7 @@ static Constant *ExtractRegisterFromConstantImpl(
     return ConstantStruct::getAnon(Vals);
   }
 
-#if (GCC_MINOR > 5)
   case NULLPTR_TYPE:
-#endif
   case OFFSET_TYPE:
   case POINTER_TYPE:
   case REFERENCE_TYPE:
@@ -636,9 +636,7 @@ RepresentAsMemory(Constant *C, tree type, TargetFolder &Folder) {
     break;
   }
 
-#if (GCC_MINOR > 5)
   case NULLPTR_TYPE:
-#endif
   case OFFSET_TYPE:
   case POINTER_TYPE:
   case REFERENCE_TYPE:
@@ -891,31 +889,14 @@ static Constant *ConvertArrayCONSTRUCTOR(tree exp, TargetFolder &Folder) {
 
       assert(host_integerp(first, 1) && host_integerp(last, 1) &&
              "Unknown range_expr!");
-//Below condition added by Arun
-#if (GCC_MINOR <= 8)
-//End of lines added by Arun
-      FirstIndex = tree_low_cst(first, 1);
-      LastIndex = tree_low_cst(last, 1);
-//Below lines added by Arun in attempt to compile using gcc 4.9
-#else
       FirstIndex = tree_to_uhwi(first);
       LastIndex = tree_to_uhwi(last);
-#endif
-//End of lines added by Arun
     } else {
       // Subtract off the lower bound if any to ensure indices start from zero.
       if (lower_bnd != NULL_TREE)
         index = fold_build2(MINUS_EXPR, main_type(index), index, lower_bnd);
       assert(host_integerp(index, 1));
-//Below condition added by Arun
-#if (GCC_MINOR <= 8)
-//End of lines added by Arun
-      FirstIndex = tree_low_cst(index, 1);
-//Below lines added by Arun in attempt to compile using gcc 4.9
-#else
       FirstIndex = tree_to_uhwi(index);
-#endif
-//End of lines added by Arun
       LastIndex = FirstIndex;
     }
 
@@ -1642,7 +1623,6 @@ static Constant *AddressOfLABEL_DECL(tree exp, TargetFolder &) {
   return TheTreeToLLVM->AddressOfLABEL_DECL(exp);
 }
 
-#if (GCC_MINOR > 5)
 /// AddressOfMEM_REF - Return the address of a memory reference.
 static Constant *AddressOfMEM_REF(tree exp, TargetFolder &Folder) {
   // The address is the first operand offset in bytes by the second.
@@ -1657,7 +1637,6 @@ static Constant *AddressOfMEM_REF(tree exp, TargetFolder &Folder) {
   // The address is always inside the referenced object, so "inbounds".
   return Folder.CreateInBoundsGetElementPtr(Addr, Offset);
 }
-#endif
 
 /// AddressOfImpl - Implementation of AddressOf.
 static Constant *AddressOfImpl(tree exp, TargetFolder &Folder) {
@@ -1694,19 +1673,14 @@ static Constant *AddressOfImpl(tree exp, TargetFolder &Folder) {
     Addr = AddressOfDecl(exp, Folder);
     break;
   case INDIRECT_REF:
-#if (GCC_MINOR < 6)
-  case MISALIGNED_INDIRECT_REF:
-#endif
     Addr = AddressOfINDIRECT_REF(exp, Folder);
     break;
   case LABEL_DECL:
     Addr = AddressOfLABEL_DECL(exp, Folder);
     break;
-#if (GCC_MINOR > 5)
   case MEM_REF:
     Addr = AddressOfMEM_REF(exp, Folder);
     break;
-#endif
   }
 
   // Ensure that the address has the expected type.  It is simpler to do this

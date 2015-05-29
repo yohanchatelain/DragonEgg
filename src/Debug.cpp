@@ -39,7 +39,15 @@ extern "C" {
 // Stop GCC declaring 'getopt' as it can clash with the system's declaration.
 #undef HAVE_DECL_GETOPT
 #include "system.h"
+#include "symtab.h"
 #include "coretypes.h"
+#include "hash-set.h"
+#include "vec.h"
+#include "input.h"
+#include "alias.h"
+#include "inchash.h"  
+#include "double-int.h"
+#include "libiberty.h"
 #include "tm.h"
 #include "tree.h"
 
@@ -198,7 +206,7 @@ static StringRef getLinkageName(tree Node) {
   tree decl_name = DECL_NAME(Node);
   if (decl_name != NULL && IDENTIFIER_POINTER(decl_name) != NULL) {
     if (TREE_PUBLIC(Node) && DECL_ASSEMBLER_NAME(Node) != DECL_NAME(Node) &&
-        !DECL_ABSTRACT(Node)) {
+        !DECL_ABSTRACT_P(Node)) {
       return StringRef(IDENTIFIER_POINTER(DECL_ASSEMBLER_NAME(Node)));
     }
   }
@@ -294,15 +302,8 @@ void DebugInfo::EmitFunctionStart(tree FnDecl, Function *Fn) {
   DIType ContainingType;
   if (DECL_VINDEX(FnDecl) && DECL_CONTEXT(FnDecl) &&
       isa<TYPE>((DECL_CONTEXT(FnDecl)))) { // Workaround GCC PR42653
-#if (GCC_MINOR <= 8)    /* Condition added by Arun */
-    if (host_integerp(DECL_VINDEX(FnDecl), 0))
-      VIndex = tree_low_cst(DECL_VINDEX(FnDecl), 0);
-//Below lines added by Arun
-#else
     if (tree_fits_shwi_p(DECL_VINDEX(FnDecl)))
       VIndex = tree_to_shwi(DECL_VINDEX(FnDecl));
-#endif
-//End of lines added by Arun
     Virtuality = dwarf::DW_VIRTUALITY_virtual;
     ContainingType = getOrCreateType(DECL_CONTEXT(FnDecl));
   }
@@ -876,15 +877,8 @@ DIType DebugInfo::createStructType(tree type) {
       unsigned VIndex = 0;
       DIType ContainingType;
       if (DECL_VINDEX(Member)) {
-#if (GCC_MINOR <= 8)     /* Condition added by Arun */
-        if (host_integerp(DECL_VINDEX(Member), 0))
-          VIndex = tree_low_cst(DECL_VINDEX(Member), 0);
-//Below lines added by Arun
-#else
         if (tree_fits_shwi_p(DECL_VINDEX(Member)))
           VIndex = tree_to_shwi(DECL_VINDEX(Member));
-#endif
-//End of lines added by Arun
          Virtuality = dwarf::DW_VIRTUALITY_virtual;
         ContainingType = getOrCreateType(DECL_CONTEXT(Member));
       }
@@ -1023,9 +1017,7 @@ DIType DebugInfo::getOrCreateType(tree type) {
   default:
     llvm_unreachable("Unsupported type");
 
-#if (GCC_MINOR > 5)
   case NULLPTR_TYPE:
-#endif
   case LANG_TYPE: {
     tree name = TYPE_NAME(type);
     if (TREE_CODE(name) == TYPE_DECL)

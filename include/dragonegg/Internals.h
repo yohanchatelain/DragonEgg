@@ -35,17 +35,8 @@
 
 struct basic_block_def;
 
-#if (GCC_MINOR <= 8) /* Condition added by Arun */
-union gimple_statement_d;
-//Below lines added by Arun in attempt to compile using gcc-4.9
-//These lines should be a temporary measure
-//gcc-4.9 replaced "union gimple_statement_d" with "struct gimple_statement_base"
-//The typedef that follows is just a quickfix to deal with that change.
-#else
 struct gimple_statement_base;
 typedef struct gimple_statement_base gimple_statement_d;
-#endif
-//End of lines added by Arun
 
 union tree_node;
 
@@ -577,12 +568,6 @@ private:
   llvm::Value *EmitReg_TRUNC_DIV_EXPR(tree_node *op0, tree_node *op1,
                                       bool isExact);
   llvm::Value *EmitReg_TRUNC_MOD_EXPR(tree_node *op0, tree_node *op1);
-#if (GCC_MINOR < 7)
-  llvm::Value *EmitReg_VEC_EXTRACT_EVEN_EXPR(tree_node *op0, tree_node *op1);
-  llvm::Value *EmitReg_VEC_EXTRACT_ODD_EXPR(tree_node *op0, tree_node *op1);
-  llvm::Value *EmitReg_VEC_INTERLEAVE_HIGH_EXPR(tree_node *op0, tree_node *op1);
-  llvm::Value *EmitReg_VEC_INTERLEAVE_LOW_EXPR(tree_node *op0, tree_node *op1);
-#endif
   llvm::Value *EmitReg_VEC_PACK_FIX_TRUNC_EXPR(tree_node *type, tree_node *op0,
                                          tree_node *op1);
   llvm::Value *
@@ -596,20 +581,13 @@ private:
 
   // Ternary expressions.
   llvm::Value *EmitReg_CondExpr(tree_node *op0, tree_node *op1, tree_node *op2);
-#if (GCC_MINOR > 5)
   llvm::Value *EmitReg_FMA_EXPR(tree_node *op0, tree_node *op1, tree_node *op2);
-#endif
-#if (GCC_MINOR > 6)
   llvm::Value *EmitReg_VEC_PERM_EXPR(tree_node *op0, tree_node *op1,
                                      tree_node *op2);
-#endif
 
   llvm::Value *EmitLoadOfLValue(tree_node *exp);
   llvm::Value *EmitOBJ_TYPE_REF(tree_node *exp);
   llvm::Value *EmitADDR_EXPR(tree_node *exp);
-#if (GCC_MINOR < 7)
-  llvm::Value *EmitCondExpr(tree_node *exp);
-#endif
   llvm::Value *EmitCallOf(llvm::Value *Callee, gimple_statement_d *stmt,
                           const MemRef *DestLoc, const llvm::AttributeSet &PAL);
   llvm::CallInst *EmitSimpleCall(llvm::StringRef CalleeName,
@@ -656,9 +634,7 @@ private:
   bool EmitBuiltinAlloca(gimple_statement_d *stmt, llvm::Value *&Result);
   bool EmitBuiltinAllocaWithAlign(gimple_statement_d *stmt,
                                   llvm::Value *&Result);
-#if (GCC_MINOR > 6)
   bool EmitBuiltinAssumeAligned(gimple_statement_d *stmt, llvm::Value *&Result);
-#endif
   bool EmitBuiltinBZero(gimple_statement_d *stmt, llvm::Value *&Result);
   bool EmitBuiltinConstantP(gimple_statement_d *stmt, llvm::Value *&Result);
   bool EmitBuiltinExpect(gimple_statement_d *stmt, llvm::Value *&Result);
@@ -705,12 +681,7 @@ private:
   LValue EmitLV_COMPONENT_REF(tree_node *exp);
   LValue EmitLV_DECL(tree_node *exp);
   LValue EmitLV_INDIRECT_REF(tree_node *exp);
-#if (GCC_MINOR > 5)
   LValue EmitLV_MEM_REF(tree_node *exp);
-#endif
-#if (GCC_MINOR < 6)
-  LValue EmitLV_MISALIGNED_INDIRECT_REF(tree_node *exp);
-#endif
   LValue EmitLV_VIEW_CONVERT_EXPR(tree_node *exp);
   LValue EmitLV_WITH_SIZE_EXPR(tree_node *exp);
   LValue EmitLV_XXXXPART_EXPR(tree_node *exp, unsigned Idx);

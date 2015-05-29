@@ -57,14 +57,8 @@ extern "C" {
   #include "gimple-expr.h"
   /* End of lines inserted by Tarun to get this to work with GCC 4.9 */
 #include "gimple.h"
-#if (GCC_MINOR > 6)
 #include "gimple-pretty-print.h"
-#endif
 #include "toplev.h"
-
-#if (GCC_MINOR == 6)
-extern void debug_gimple_stmt(union gimple_statement_d *);
-#endif
 
 #ifndef ENABLE_BUILD_WITH_CXX
 } // extern "C"

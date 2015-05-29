@@ -85,13 +85,18 @@ CPP_OPTIONS+=$(CPPFLAGS) $(shell $(LLVM_CONFIG) --cppflags) \
 ifdef DISABLE_VERSION_CHECK
 CPP_OPTIONS+=-DDISABLE_VERSION_CHECK
 endif
-ifneq ($(GCC_MINOR), 5)
-  ifneq ($(GCC_MINOR), 6)
-    ifneq ($(GCC_MINOR), 7)
-      # gcc-4.8 and later are always built with C++.
-      CPP_OPTIONS+=-DENABLE_BUILD_WITH_CXX
+ifeq ($(GCC_MAJOR), 4)
+  ifneq ($(GCC_MINOR), 5)
+    ifneq ($(GCC_MINOR), 6)
+      ifneq ($(GCC_MINOR), 7)
+        # gcc-4.8 and later are always built with C++.
+        CPP_OPTIONS+=-DENABLE_BUILD_WITH_CXX
+      endif
     endif
   endif
+endif
+ifeq ($(GCC_MAJOR), 5)
+  CPP_OPTIONS += -DENABLE_BUILD_WITH_CXX
 endif
 
 LD_OPTIONS+=$(shell $(LLVM_CONFIG) --ldflags) $(LDFLAGS)

@@ -36,17 +36,22 @@ extern "C" {
 // Stop GCC declaring 'getopt' as it can clash with the system's declaration.
 #undef HAVE_DECL_GETOPT
 #include "system.h"
+#include "symtab.h"
 #include "coretypes.h"
+#include "hash-set.h"
+#include "vec.h"
+#include "input.h"
+#include "alias.h"
+#include "inchash.h"  
+#include "double-int.h"
+#include "libiberty.h"
 #include "tm.h"
 #include "tree.h"
 #ifndef ENABLE_BUILD_WITH_CXX
 } // extern "C"
 #endif
-//Below lines added by Arun in attempt to compile using gcc-4.9
-#if (GCC_MINOR == 9)
+#include "hard-reg-set.h"
 #include "function.h"
-#endif
-//End of lines added by Arun
 
 // Trees header.
 #include "dragonegg/Trees.h"
