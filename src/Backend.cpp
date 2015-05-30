@@ -1960,8 +1960,8 @@ public:
   bool gate () { return true; }
 
   unsigned int execute () {
-    if (cgraph_state < CGRAPH_STATE_IPA_SSA)
-      cgraph_state = CGRAPH_STATE_IPA_SSA;
+    if (symtab->state < symtab_state::IPA_SSA)
+      symtab->state = symtab_state::IPA_SSA;
     return 0;
   }
 };
