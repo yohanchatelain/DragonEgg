@@ -176,15 +176,9 @@ APInt getAPIntValue(const_tree exp, unsigned Bitwidth) {
 
   APInt DefaultValue;
   if (integerPartWidth == HOST_BITS_PER_WIDE_INT) {
-    DefaultValue = APInt(DefaultWidth, /*numWords*/ 2, (integerPart *)&val);
+    DefaultValue = APInt(DefaultWidth, llvm::makeArrayRef((const integerPart *)val.get_val(), 2));
   } else {
-    assert(integerPartWidth == 2 * HOST_BITS_PER_WIDE_INT &&
-           "Unsupported host integer width!");
-    unsigned ShiftAmt = HOST_BITS_PER_WIDE_INT;
-    integerPart Part =
-        integerPart((unsigned HOST_WIDE_INT) val.low) +
-        (integerPart((unsigned HOST_WIDE_INT) val.high) << ShiftAmt);
-    DefaultValue = APInt(DefaultWidth, Part);
+    assert("Unsupported host integer width!");
   }
 
   if (!Bitwidth || Bitwidth == DefaultWidth)
@@ -217,14 +211,8 @@ bool isInt64(const_tree t, bool Unsigned) {
     else
       return tree_fits_shwi_p(t) && !TREE_OVERFLOW(t);
   }
-  assert(HOST_BITS_PER_WIDE_INT == 32 &&
-         "Only 32- and 64-bit hosts supported!");
-  return (isa<INTEGER_CST>(t) && !TREE_OVERFLOW(t)) &&
-         ((TYPE_UNSIGNED(TREE_TYPE(t)) == Unsigned) ||
-          // If the constant is signed and we want an unsigned result, check
-          // that the value is non-negative.  If the constant is unsigned and
-          // we want a signed result, check it fits in 63 bits.
-          (HOST_WIDE_INT) TREE_INT_CST_HIGH(t) >= 0);
+  assert("Only 64-bit hosts supported!");
+  return false;
 }
 
 /// getInt64 - Extract the value of an INTEGER_CST as a 64 bit integer.  If
@@ -238,10 +226,8 @@ uint64_t getInt64(const_tree t, bool Unsigned) {
   if (HOST_BITS_PER_WIDE_INT == 64) {
     return (uint64_t) LO;
   } else {
-    assert(HOST_BITS_PER_WIDE_INT == 32 &&
-           "Only 32- and 64-bit hosts supported!");
-    unsigned HOST_WIDE_INT HI = (unsigned HOST_WIDE_INT) TREE_INT_CST_HIGH(t);
-    return ((uint64_t) HI << 32) | (uint64_t) LO;
+    assert("Only 64-bit hosts supported!");
+    return 0;
   }
 }
 
