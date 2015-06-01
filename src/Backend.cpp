@@ -2177,6 +2177,7 @@ public:
   {}
 
   bool gate () { return false; }
+  opt_pass* clone() { return new pass_gimple_null(g); }
 };
 
 pass_gimple_null pass_gimple_null(g);
@@ -2250,6 +2251,8 @@ public:
       cgraph_state = CGRAPH_STATE_IPA_SSA;
     return 0;
   }
+
+  opt_pass* clone() { return new pass_gimple_correct_state(g); }
 };
 
 pass_gimple_correct_state pass_gimple_correct_state(g);
@@ -2329,6 +2332,7 @@ public:
   {}
 
   bool gate () { return false; }
+  opt_pass* clone() { return new pass_ipa_null(g); }
 };
 
 pass_ipa_null pass_ipa_null(g);
@@ -2383,6 +2387,7 @@ public:
   {}
 
   bool gate () { return false; }
+  opt_pass* clone() { return new pass_rtl_null(g); }
 };
 
 pass_rtl_null pass_rtl_null(g);
@@ -2438,6 +2443,7 @@ public:
   {}
 
   bool gate () { return false; }
+  opt_pass* clone() { return new pass_simple_ipa_null(g); }
 };
 
 pass_simple_ipa_null pass_simple_ipa_null(g);
