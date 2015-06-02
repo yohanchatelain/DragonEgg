@@ -1855,6 +1855,8 @@ public:
     TREE_ASM_WRITTEN(current_function_decl) = 1;
     return 0;
   }
+
+  opt_pass* clone() { return new pass_rtl_emit_function(g); }
 };
 
 pass_rtl_emit_function pass_rtl_emit_function(g);
@@ -2827,7 +2829,7 @@ int __attribute__((visibility("default"))) plugin_init(
     register_callback(plugin_name, PLUGIN_PASS_MANAGER_SETUP, NULL, &pass_info);
 #endif
   }
-
+/* Commented by Arun in attempt to test something about passes removed by gcc
   // Disable all LTO passes.
 //Below condition added by Arun
 #if (GCC_MINOR < 9)
@@ -2856,7 +2858,7 @@ int __attribute__((visibility("default"))) plugin_init(
   pass_info.ref_pass_instance_number = 0;
   pass_info.pos_op = PASS_POS_REPLACE;
   register_callback(plugin_name, PLUGIN_PASS_MANAGER_SETUP, NULL, &pass_info);
-
+*/
 #if (GCC_MINOR < 6)
   pass_info.pass = &pass_ipa_null.pass;
   pass_info.reference_pass_name = "lto_wpa_fixup";
@@ -2964,7 +2966,7 @@ int __attribute__((visibility("default"))) plugin_init(
     pass_info.ref_pass_instance_number = 0;
     pass_info.pos_op = PASS_POS_REPLACE;
     register_callback(plugin_name, PLUGIN_PASS_MANAGER_SETUP, NULL, &pass_info);
-
+/* Commented by Arun in attempt to test something about passes removed by gcc
     // Disable pass_mudflap_2. ???
 //Below condition added by Arun
 #if (GCC_MINOR < 9)
@@ -2979,7 +2981,7 @@ int __attribute__((visibility("default"))) plugin_init(
     pass_info.ref_pass_instance_number = 0;
     pass_info.pos_op = PASS_POS_REPLACE;
     register_callback(plugin_name, PLUGIN_PASS_MANAGER_SETUP, NULL, &pass_info);
-
+*/
     // Disable pass_cleanup_cfg_post_optimizing.
 //Below condition added by Arun
 #if (GCC_MINOR < 9)
