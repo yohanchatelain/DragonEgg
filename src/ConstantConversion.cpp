@@ -59,13 +59,6 @@ extern "C" {
 } // extern "C"
 #endif
 
-//Below lines added by Arun in attempt to compile using gcc-4.9
-#if (GCC_MINOR == 9)
-#include "stor-layout.h"
-#include "print-tree.h"
-#endif
-//End of lines added by Arun
-
 // Trees header.
 #include "dragonegg/Trees.h"
 
@@ -891,31 +884,14 @@ static Constant *ConvertArrayCONSTRUCTOR(tree exp, TargetFolder &Folder) {
 
       assert(host_integerp(first, 1) && host_integerp(last, 1) &&
              "Unknown range_expr!");
-//Below condition added by Arun
-#if (GCC_MINOR <= 8)
-//End of lines added by Arun
       FirstIndex = tree_low_cst(first, 1);
       LastIndex = tree_low_cst(last, 1);
-//Below lines added by Arun in attempt to compile using gcc 4.9
-#else
-      FirstIndex = tree_to_uhwi(first);
-      LastIndex = tree_to_uhwi(last);
-#endif
-//End of lines added by Arun
     } else {
       // Subtract off the lower bound if any to ensure indices start from zero.
       if (lower_bnd != NULL_TREE)
         index = fold_build2(MINUS_EXPR, main_type(index), index, lower_bnd);
       assert(host_integerp(index, 1));
-//Below condition added by Arun
-#if (GCC_MINOR <= 8)
-//End of lines added by Arun
       FirstIndex = tree_low_cst(index, 1);
-//Below lines added by Arun in attempt to compile using gcc 4.9
-#else
-      FirstIndex = tree_to_uhwi(index);
-#endif
-//End of lines added by Arun
       LastIndex = FirstIndex;
     }
 

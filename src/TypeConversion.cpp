@@ -54,13 +54,6 @@ extern "C" {
 } // extern "C"
 #endif
 
-//Below lines added by Arun in attempt to compile using gcc-4.9
-#if (GCC_MINOR == 9)
-#include "print-tree.h"
-#include "calls.h"
-#endif
-//End of lines added by Arun
-
 // Trees header.
 #include "dragonegg/Trees.h"
 

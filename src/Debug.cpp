@@ -235,9 +235,6 @@ void DebugInfo::EmitFunctionStart(tree FnDecl, Function *Fn) {
 
   unsigned lineno = CurLineNo;
 
-// Below line commented by Arun in attempt to compile using llvm-3.6
-//  std::map<tree_node *, WeakVH>::iterator I = SPCache.find(FnDecl);
-// Below line added by Arun in attempt to compile using llvm-3.6
   std::map<tree_node *, TrackingMDRef>::iterator I = SPCache.find(FnDecl);
   if (I != SPCache.end()) {
     DISubprogram SPDecl(cast<MDNode>(I->second));
@@ -246,10 +243,6 @@ void DebugInfo::EmitFunctionStart(tree FnDecl, Function *Fn) {
     // SPDecl->replaceAllUsesWith(SP);
 
     // Push function on region stack.
-// Below two lines commented by Arun in attempt to compile using llvm-3.6
-//    RegionStack.push_back(WeakVH(SP));
-//    RegionMap[FnDecl] = WeakVH(SP);
-// Below two lines added by Arun in attempt to compile using llvm-3.6
     RegionStack.push_back(TrackingMDRef(SP));
     RegionMap[FnDecl] = TrackingMDRef(SP);
     return;
@@ -276,10 +269,6 @@ void DebugInfo::EmitFunctionStart(tree FnDecl, Function *Fn) {
     // SPDecl->replaceAllUsesWith(SP);
 
     // Push function on region stack.
-// Below two lines commented by Arun in attempt to compile using llvm-3.6
-//    RegionStack.push_back(WeakVH(SP));
-//    RegionMap[FnDecl] = WeakVH(SP);
-// Below two lines added by Arun in attempt to compile using llvm-3.6
     RegionStack.push_back(TrackingMDRef(SP));
     RegionMap[FnDecl] = TrackingMDRef(SP);
     return;
@@ -294,15 +283,8 @@ void DebugInfo::EmitFunctionStart(tree FnDecl, Function *Fn) {
   DIType ContainingType;
   if (DECL_VINDEX(FnDecl) && DECL_CONTEXT(FnDecl) &&
       isa<TYPE>((DECL_CONTEXT(FnDecl)))) { // Workaround GCC PR42653
-#if (GCC_MINOR <= 8)    /* Condition added by Arun */
     if (host_integerp(DECL_VINDEX(FnDecl), 0))
       VIndex = tree_low_cst(DECL_VINDEX(FnDecl), 0);
-//Below lines added by Arun
-#else
-    if (tree_fits_shwi_p(DECL_VINDEX(FnDecl)))
-      VIndex = tree_to_shwi(DECL_VINDEX(FnDecl));
-#endif
-//End of lines added by Arun
     Virtuality = dwarf::DW_VIRTUALITY_virtual;
     ContainingType = getOrCreateType(DECL_CONTEXT(FnDecl));
   }
@@ -314,25 +296,15 @@ void DebugInfo::EmitFunctionStart(tree FnDecl, Function *Fn) {
       FNType, Fn->hasInternalLinkage(), true /*definition*/, Virtuality, VIndex,
       ContainingType, DECL_ARTIFICIAL(FnDecl), optimize, Fn);
 
-// Below line commented by Arun in attempt to compile using llvm-3.6
-//  SPCache[FnDecl] = WeakVH(SP);
-// Below line added by Arun in attempt to compile using llvm-3.6
   SPCache[FnDecl] = TrackingMDRef(SP);
 
   // Push function on region stack.
-// Below two lines commented by Arun in attempt to compile using llvm-3.6
-//  RegionStack.push_back(WeakVH(SP));
-//  RegionMap[FnDecl] = WeakVH(SP);
-// Below two lines added by Arun in attempt to compile using llvm-3.6
   RegionStack.push_back(TrackingMDRef(SP));
   RegionMap[FnDecl] = TrackingMDRef(SP);
 }
 
 /// getOrCreateNameSpace - Get name space descriptor for the tree node.
 DINameSpace DebugInfo::getOrCreateNameSpace(tree Node, DIDescriptor Context) {
-// Below line commented by Arun in attempt to compile using llvm-3.6
-//  std::map<tree_node *, WeakVH>::iterator I = NameSpaceCache.find(Node);
-// Below line added by Arun in attempt to compile using llvm-3.6
   std::map<tree_node *, TrackingMDRef>::iterator I = NameSpaceCache.find(Node);
   if (I != NameSpaceCache.end())
     return DINameSpace(cast<MDNode>(I->second));
@@ -341,9 +313,6 @@ DINameSpace DebugInfo::getOrCreateNameSpace(tree Node, DIDescriptor Context) {
   DINameSpace DNS = Builder.createNameSpace(
       Context, GetNodeName(Node), getOrCreateFile(Loc.file), Loc.line);
 
-// Below line commented by Arun in attempt to compile using llvm-3.6
-//  NameSpaceCache[Node] = WeakVH(DNS);
-// Below line added by Arun in attempt to compile using llvm-3.6
   NameSpaceCache[Node] = TrackingMDRef(DNS);
   return DNS;
 }
@@ -353,9 +322,6 @@ DIDescriptor DebugInfo::findRegion(tree Node) {
   if (Node == NULL_TREE)
     return getOrCreateFile(main_input_filename);
 
-// Below line commented by Arun in attempt to compile using llvm-3.6
-//  std::map<tree_node *, WeakVH>::iterator I = RegionMap.find(Node);
-// Below line added by Arun in attempt to compile using llvm-3.6
   std::map<tree_node *, TrackingMDRef>::iterator I = RegionMap.find(Node);
   if (I != RegionMap.end())
     if (MDNode *R = dyn_cast_or_null<MDNode>(&*I->second))
@@ -530,22 +496,12 @@ DIType DebugInfo::createMethodType(tree type) {
     0, 0, 0, 0);
   llvm::MDNode *FTN = FwdType;
   llvm::TrackingMDNodeRef FwdTypeNode(FTN);
-// Below line commented by Arun in attempt to compile using llvm-3.6
-//  TypeCache[type] = WeakVH(FwdType);
-// Below line added by Arun in attempt to compile using llvm-3.6
   TypeCache[type] = TrackingMDRef(FwdType);
 
   // Push the struct on region stack.
-// Below two lines commented by Arun in attempt to compile using llvm-3.6
-//  RegionStack.push_back(WeakVH(FwdType));
-//  RegionMap[type] = WeakVH(FwdType);
-// Below two lines added by Arun in attempt to compile using llvm-3.6
   RegionStack.push_back(TrackingMDRef(FwdType));
   RegionMap[type] = TrackingMDRef(FwdType);
 
-// Below line commented by Arun in attempt to compile using llvm-3.6
-//  llvm::SmallVector<Value*, 16> EltTys;
-// Below line added by Arun in attempt to compile using llvm-3.6
   llvm::SmallVector<Metadata*, 16> EltTys;
 
   // Add the result type at least.
@@ -570,9 +526,6 @@ DIType DebugInfo::createMethodType(tree type) {
   llvm::DITypeArray EltTypeArray = Builder.getOrCreateTypeArray(EltTys);
 
   RegionStack.pop_back();
-// Below line commented by Arun in attempt to compile using llvm-3.6
-//  std::map<tree_node *, WeakVH>::iterator RI = RegionMap.find(type);
-// Below line added by Arun in attempt to compile using llvm-3.6
   std::map<tree_node *, TrackingMDRef>::iterator RI = RegionMap.find(type);
   if (RI != RegionMap.end())
     RegionMap.erase(RI);
@@ -607,9 +560,6 @@ DIType DebugInfo::createPointerType(tree type) {
           Tag, findRegion(DECL_CONTEXT(TyName)), GetNodeName(TyName),
           getOrCreateFile(TypeNameLoc.file), TypeNameLoc.line, 0 /*size*/,
           0 /*align*/, 0 /*offset */, 0 /*flags*/, FromTy);
-// Below line commented by Arun in attempt to compile using llvm-3.6
-//      TypeCache[TyName] = WeakVH(Ty);
-// Below line added by Arun in attempt to compile using llvm-3.6
       TypeCache[TyName] = TrackingMDRef(Ty);
       return Ty;
     }
@@ -628,9 +578,6 @@ DIType DebugInfo::createArrayType(tree type) {
   // Add the dimensions of the array.  FIXME: This loses CV qualifiers from
   // interior arrays, do we care?  Why aren't nested arrays represented the
   // obvious/recursive way?
-// Below line commented by Arun in attempt to compile using llvm-3.6
-//  llvm::SmallVector<Value*, 8> Subscripts;
-// Below line commented by Arun in attempt to compile using llvm-3.6
   llvm::SmallVector<Metadata*, 8> Subscripts;
 
   // There will be ARRAY_TYPE nodes for each rank.  Followed by the derived
@@ -740,9 +687,6 @@ DIType DebugInfo::createStructType(tree type) {
   // Check if this type is created while creating context information
   // descriptor.
   {
-// Below line commented by Arun in attempt to compile using llvm-3.6
-//    std::map<tree_node *, WeakVH>::iterator I = TypeCache.find(type);
-// Below line added by Arun in attempt to compile using llvm-3.6
     std::map<tree_node *, TrackingMDRef>::iterator I = TypeCache.find(type);
     if (I != TypeCache.end())
       if (MDNode *TN = dyn_cast_or_null<MDNode>(&*I->second))
@@ -760,16 +704,9 @@ DIType DebugInfo::createStructType(tree type) {
   // Insert into the TypeCache so that recursive uses will find it.
   llvm::MDNode *FDN = FwdDecl;
   llvm::TrackingMDNodeRef FwdDeclNode(FDN);
-// Below line commented by Arun in attempt to compile using llvm-3.6
-//  TypeCache[type] = WeakVH(FwdDecl);
-// Below line commented by Arun in attempt to compile using llvm-3.6
   TypeCache[type] = TrackingMDRef(FwdDecl);
 
   // Push the struct on region stack.
-// Below two lines commented by Arun in attempt to compile using llvm-3.6
-//  RegionStack.push_back(WeakVH(FwdDecl));
-//  RegionMap[type] = WeakVH(FwdDecl);
-// Below two lines added by Arun in attempt to compile using llvm-3.6
   RegionStack.push_back(TrackingMDRef(FwdDecl));
   RegionMap[type] = TrackingMDRef(FwdDecl);
 
@@ -860,9 +797,6 @@ DIType DebugInfo::createStructType(tree type) {
     if (DECL_P(Member) && DECL_IGNORED_P(Member))
       continue;
 
-// Below line commented by Arun in attempt to compile using llvm-3.6
-//    std::map<tree_node *, WeakVH>::iterator I = SPCache.find(Member);
-// Below line added by Arun in attempt to compile using llvm-3.6
     std::map<tree_node *, TrackingMDRef>::iterator I = SPCache.find(Member);
     if (I != SPCache.end())
       EltTys.push_back(DISubprogram(cast<MDNode>(I->second)));
@@ -876,16 +810,9 @@ DIType DebugInfo::createStructType(tree type) {
       unsigned VIndex = 0;
       DIType ContainingType;
       if (DECL_VINDEX(Member)) {
-#if (GCC_MINOR <= 8)     /* Condition added by Arun */
         if (host_integerp(DECL_VINDEX(Member), 0))
           VIndex = tree_low_cst(DECL_VINDEX(Member), 0);
-//Below lines added by Arun
-#else
-        if (tree_fits_shwi_p(DECL_VINDEX(Member)))
-          VIndex = tree_to_shwi(DECL_VINDEX(Member));
-#endif
-//End of lines added by Arun
-         Virtuality = dwarf::DW_VIRTUALITY_virtual;
+        Virtuality = dwarf::DW_VIRTUALITY_virtual;
         ContainingType = getOrCreateType(DECL_CONTEXT(Member));
       }
       DISubprogram SP = CreateSubprogram(
@@ -894,9 +821,6 @@ DIType DebugInfo::createStructType(tree type) {
           Virtuality, VIndex, ContainingType, DECL_ARTIFICIAL(Member),
           optimize);
       EltTys.push_back(SP);
-// Below line commented by Arun in attempt to compile using llvm-3.6
-//      SPCache[Member] = WeakVH(SP);
-// Below line added by Arun in attempt to compile using llvm-3.6
       SPCache[Member] = TrackingMDRef(SP);
     }
   }
@@ -904,9 +828,6 @@ DIType DebugInfo::createStructType(tree type) {
   llvm::DIArray Elements = Builder.getOrCreateArray(EltTys);
 
   RegionStack.pop_back();
-// Below line commented by Arun in attempt to compile using llvm-3.6
-//  std::map<tree_node *, WeakVH>::iterator RI = RegionMap.find(type);
-// Below line added by Arun in attempt to compile using llvm-3.6
   std::map<tree_node *, TrackingMDRef>::iterator RI = RegionMap.find(type);
   if (RI != RegionMap.end())
     RegionMap.erase(RI);
@@ -921,9 +842,6 @@ DIType DebugInfo::createStructType(tree type) {
       getOrCreateFile(Loc.file), Loc.line, NodeSizeInBits(type),
       NodeAlignInBits(type), 0, SFlags, llvm::DIType(), Elements, RunTimeLang,
       ContainingType);
-// Below line commented by Arun in attempt to compile using llvm-3.6
-//  RegionMap[type] = WeakVH(RealDecl);
-// Below line added by Arun in attempt to compile using llvm-3.6
   RegionMap[type] = TrackingMDRef(RealDecl);
 
   // Now that we have a real decl for the struct, replace anything using the
@@ -939,9 +857,6 @@ DIType DebugInfo::createVariantType(tree type, DIType MainTy) {
 
   DIType Ty;
   if (tree TyDef = TYPE_NAME(type)) {
-// Below line commented by Arun in attempt to compile using llvm-3.6
-//    std::map<tree_node *, WeakVH>::iterator I = TypeCache.find(TyDef);
-// Below line added by Arun in attempt to compile using llvm-3.6
     std::map<tree_node *, TrackingMDRef>::iterator I = TypeCache.find(TyDef);
     if (I != TypeCache.end())
       if (I->second)
@@ -952,9 +867,6 @@ DIType DebugInfo::createVariantType(tree type, DIType MainTy) {
           DW_TAG_typedef, findRegion(DECL_CONTEXT(TyDef)), GetNodeName(TyDef),
           getOrCreateFile(TypeDefLoc.file), TypeDefLoc.line, 0 /*size*/,
           0 /*align*/, 0 /*offset */, 0 /*flags*/, MainTy);
-// Below line commented by Arun in attempt to compile using llvm-3.6
-//      TypeCache[TyDef] = WeakVH(Ty);
-// Below line added by Arun in attempt to compile using llvm-3.6
       TypeCache[TyDef] = TrackingMDRef(Ty);
       return Ty;
     }
@@ -977,9 +889,6 @@ DIType DebugInfo::createVariantType(tree type, DIType MainTy) {
         0 /* flags */, MainTy);
 
   if (TYPE_VOLATILE(type) || TYPE_READONLY(type)) {
-// Below line commented by Arun in attempt to compile using llvm-3.6
-//    TypeCache[type] = WeakVH(Ty);
-// Below line added by Arun in attempt to compile using llvm-3.6
     TypeCache[type] = TrackingMDRef(Ty);
     return Ty;
   }
@@ -1000,9 +909,6 @@ DIType DebugInfo::getOrCreateType(tree type) {
     return DIType();
 
   // Check to see if the compile unit already has created this type.
-// Below line commented by Arun in attempt to compile using llvm-3.6
-//  std::map<tree_node *, WeakVH>::iterator I = TypeCache.find(type);
-// Below line added by Arun in attempt to compile using llvm-3.6
   std::map<tree_node *, TrackingMDRef>::iterator I = TypeCache.find(type);
   if (I != TypeCache.end())
     if (I->second)
@@ -1066,9 +972,6 @@ DIType DebugInfo::getOrCreateType(tree type) {
     Ty = createBasicType(type);
     break;
   }
-// Below line commented by Arun in attempt to compile using llvm-3.6
-//  TypeCache[type] = WeakVH(Ty);
-// Below line added by Arun in attempt to compile using llvm-3.6
   TypeCache[type] = TrackingMDRef(Ty);
   return Ty;
 }

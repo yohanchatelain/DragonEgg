@@ -67,48 +67,7 @@ extern "C" {
 #include "target.h" // For targetm.
 #include "tm_p.h"
 #include "toplev.h"
-//Below condition added by Arun in attempt to compile using gcc-4.9
-#if (GCC_MINOR <= 8)
-//End of lines added by Arun
 #include "tree-flow.h"
-//Next few lines (includes) added by Arun in attempt to compile using gcc-4.9
-#else
-
-#include "tree-cfg.h"
-#include "tree-inline.h"
-#include "stringpool.h"
-#include "context.h"
-#include "stor-layout.h"
-#include "print-tree.h"
-
-//Below lines were in the old tree-flow.h
-#include "bitmap.h"
-#include "sbitmap.h"
-#include "tree-ssa-operands.h"
-#include "hashtab.h"
-#include "ipa-reference.h"
-#include "cgraph.h"
-
-//Below lines were from a suggestion on a bug report online
-#include "function.h"
-#include "basic-block.h"
-#include "is-a.h"
-#include "predict.h"
-#include "internal-fn.h"
-#include "tree-ssa-alias.h"
-#include "gimple-expr.h"
-
-#include "tree-eh.h"
-#include "stmt.h"
-#include "gimple.h"
-#include "gimple-iterator.h"
-
-//Below line was in gimple.h
-extern bool validate_gimple_arglist (const_gimple, ...);
-
-#endif
-//End of lines added by Arun
-
 #include "tree-pass.h"
 
 using namespace llvm;
@@ -1109,7 +1068,7 @@ void TreeToLLVM::StartFunctionBody() {
 
   // Create a new basic block for the function.
   BasicBlock *EntryBlock = BasicBlock::Create(Context, "entry", Fn);
-  BasicBlocks[ENTRY_BLOCK_PTR_FOR_FN(cfun)] = EntryBlock;
+  BasicBlocks[ENTRY_BLOCK_PTR] = EntryBlock;
   Builder.SetInsertPoint(EntryBlock);
 
   if (EmitDebugInfo())
@@ -1569,7 +1528,7 @@ BasicBlock *TreeToLLVM::getLabelDeclBlock(tree LabelDecl) {
   basic_block bb = label_to_block(LabelDecl);
   if (!bb) {
     sorry("address of a non-local label");
-    bb = ENTRY_BLOCK_PTR_FOR_FN(cfun); // Do not crash.
+    bb = ENTRY_BLOCK_PTR; // Do not crash.
   }
 
   BasicBlock *BB = getBasicBlock(bb);
@@ -1582,7 +1541,7 @@ void TreeToLLVM::EmitBasicBlock(basic_block bb) {
   ++NumBasicBlocks;
 
   // Avoid outputting a pointless branch at the end of the entry block.
-  if (bb != ENTRY_BLOCK_PTR_FOR_FN(cfun))
+  if (bb != ENTRY_BLOCK_PTR)
     BeginBlock(getBasicBlock(bb));
 
   // Create an LLVM phi node for each GCC phi and define the associated ssa name
@@ -1719,7 +1678,7 @@ Function *TreeToLLVM::EmitFunction() {
 
   // Output the basic blocks.
   basic_block bb;
-  FOR_EACH_BB_FN(bb, cfun) EmitBasicBlock(bb);
+  FOR_EACH_BB(bb) EmitBasicBlock(bb);
 
   // Wrap things up.
   return FinishFunctionBody();
@@ -5187,9 +5146,7 @@ bool TreeToLLVM::EmitBuiltinCall(gimple stmt, tree fndecl,
   case BUILT_IN_CLASSIFY_TYPE:
   case BUILT_IN_AGGREGATE_INCOMING_ADDRESS:
   case BUILT_IN_SETJMP_SETUP:
-#if (GCC_MINOR <= 8)    /* Condition added by Arun */
   case BUILT_IN_SETJMP_DISPATCHER:
-#endif                  /* line added by Arun */
   case BUILT_IN_SETJMP_RECEIVER:
   case BUILT_IN_UPDATE_SETJMP_BUF:
       // FIXME: HACK: Just ignore these.
@@ -5332,13 +5289,7 @@ bool TreeToLLVM::EmitBuiltinCall(gimple stmt, tree fndecl,
       if (!validate_gimple_arglist(stmt, REAL_TYPE, VOID_TYPE))
         return 0;
 
-#if (GCC_MINOR <= 8)    /* Condition added by Arun */
       if (TARGET_HAS_SINCOS) {
-//Below lines added by Arun in attempt to compile using gcc-4.9
-#else
-      if (TARGET_LIBC_HAS_FUNCTION(function_sincos)) {
-#endif
-//End of lines added by Arun
         // exp(i*arg) = cos(arg) + i*sin(arg).  Emit a call to sincos.  First
         // determine which version of sincos to call.
         tree arg = gimple_call_arg(stmt, 0);
@@ -5754,15 +5705,8 @@ bool TreeToLLVM::EmitBuiltinCall(gimple stmt, tree fndecl,
     // Exception handling builtins.
 
     bool TreeToLLVM::EmitBuiltinEHCopyValues(gimple stmt) {
-#if (GCC_MINOR <=8)   /* Condition added by Arun */
       unsigned DstRegionNo = tree_low_cst(gimple_call_arg(stmt, 0), 0);
       unsigned SrcRegionNo = tree_low_cst(gimple_call_arg(stmt, 1), 0);
-//Below lines added by Arun
-#else
-      unsigned DstRegionNo = tree_to_shwi(gimple_call_arg(stmt, 0));
-      unsigned SrcRegionNo = tree_to_shwi(gimple_call_arg(stmt, 1));
-#endif
-//End of lines added by Arun
       // Copy the exception pointer.
       Value *ExcPtr = Builder.CreateLoad(getExceptionPtr(SrcRegionNo));
       Builder.CreateStore(ExcPtr, getExceptionPtr(DstRegionNo));
@@ -5774,13 +5718,7 @@ bool TreeToLLVM::EmitBuiltinCall(gimple stmt, tree fndecl,
 
     bool TreeToLLVM::EmitBuiltinEHFilter(gimple stmt, Value * &Result) {
       // Lookup the local that holds the selector value for this region.
-#if (GCC_MINOR <=8)   /* Condition added by Arun */
       unsigned RegionNo = tree_low_cst(gimple_call_arg(stmt, 0), 0);
-//Below lines added by Arun
-#else
-      unsigned RegionNo = tree_to_shwi(gimple_call_arg(stmt, 0));
-#endif
-//End of lines added by Arun
       AllocaInst *Filter = getExceptionFilter(RegionNo);
       // Load the selector value out.
       Result = Builder.CreateLoad(Filter);
@@ -5793,13 +5731,7 @@ bool TreeToLLVM::EmitBuiltinCall(gimple stmt, tree fndecl,
 
     bool TreeToLLVM::EmitBuiltinEHPointer(gimple stmt, Value * &Result) {
       // Lookup the local that holds the exception pointer for this region.
-#if (GCC_MINOR <= 8)    /* Condition added by Arun */
       unsigned RegionNo = tree_low_cst(gimple_call_arg(stmt, 0), 0);
-//Below lines added by Arun
-#else
-      unsigned RegionNo = tree_to_shwi(gimple_call_arg(stmt, 0));
-#endif
-//End of lines added by Arun
       AllocaInst *ExcPtr = getExceptionPtr(RegionNo);
       // Load the exception pointer out.
       Result = Builder.CreateLoad(ExcPtr);
@@ -5874,13 +5806,7 @@ bool TreeToLLVM::EmitBuiltinCall(gimple stmt, tree fndecl,
         return false;
       }
 
-#if (GCC_MINOR <= 8)    /* Condition added by Arun */
       iwhich = tree_low_cst(which, 1);
-//Below lines added by Arun
-#else
-      iwhich = tree_to_uhwi(which);
-#endif
-//End of lines added by Arun
       iwhich = EH_RETURN_DATA_REGNO(iwhich);
       if (iwhich == INVALID_REGNUM)
         return false;
