@@ -1086,7 +1086,8 @@ static void emit_varpool_aliases(struct varpool_node *node) {
     emit_alias(varpool_symbol(alias)->decl, alias->alias_of);
 //Below lines added by Arun
 #else
-    emit_alias(varpool_symbol(alias)->decl, alias->alias_target);
+    emit_alias(varpool_symbol(alias)->decl, varpool_alias_target(alias)->decl);
+    //    emit_alias(varpool_symbol(alias)->decl, alias->alias_target);
 #endif
 //End of lines added by Arun
     emit_varpool_aliases(alias);
@@ -1911,8 +1912,10 @@ static void emit_varpool_weakrefs() {
                  : get_alias_symbol(varpool_symbol(vnode)->decl));
 //Below lines added by Arun
 #else
-      emit_alias(varpool_symbol(vnode)->decl, vnode->alias_target ? vnode->alias_target
-                 : get_alias_symbol(varpool_symbol(vnode)->decl));
+      // emit_alias(varpool_symbol(vnode)->decl, vnode->alias_target ? vnode->alias_target
+      //            : get_alias_symbol(varpool_symbol(vnode)->decl));
+  emit_alias(varpool_symbol(vnode)->decl, vnode->analyzed ? varpool_alias_target(vnode)->decl
+             : get_alias_symbol(varpool_symbol(vnode)->decl));
 #endif
 //End of lines added by Arun
 }
