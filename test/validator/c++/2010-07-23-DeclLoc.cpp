@@ -1,9 +1,9 @@
 // RUN: %dragonegg -S -g %s -o - | FileCheck %s
 // Require the template function declaration refer to the correct filename.
 // First, locate the function decl in metadata, and pluck out the file handle:
-// CHECK: = metadata !{metadata !"0x2e\00extract_dwarf_data_from_header{{[^"]*}}", metadata ![[filedata:[0-9]+]],
+// CHECK: = metadata !{!"0x2e\00extract_dwarf_data_from_header{{[^"]*}}", ![[filedata:[0-9]+]],
 // Second: Require that filetag refers to metadata holding the correct filename:
-// CHECK: {{^!}}[[filedata]] = metadata !{metadata !"decl_should_be_here.hpp",
+// CHECK: {{^!}}[[filedata]] = !{!"decl_should_be_here.hpp",
 typedef long unsigned int __darwin_size_t;
 typedef __darwin_size_t size_t;
 typedef unsigned char uint8_t;
