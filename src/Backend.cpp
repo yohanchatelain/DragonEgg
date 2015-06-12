@@ -1836,6 +1836,10 @@ public:
   {}
 
   unsigned int execute () {
+// Lines added by Arun in attempt to find why no IR is emitted for functions
+    printf ("rtl_emit_function::execute called \n");
+// End of lines added by Arun
+
     if (!errorcount && !sorrycount) {
       InitializeBackend();
       // Convert the function.
@@ -1860,7 +1864,10 @@ public:
   opt_pass* clone() { return new pass_rtl_emit_function(g); }
 };
 
-pass_rtl_emit_function pass_rtl_emit_function(g);
+rtl_opt_pass *make_pass_rtl_emit_function (gcc::context *ctxt) {
+  return new pass_rtl_emit_function(ctxt);
+}
+//pass_rtl_emit_function pass_rtl_emit_function(g);
 #endif                                   /* #if (GCC_MINOR == 9) */
 
 #endif                                   /* #if (GCC_MINOR <= 8) */
@@ -2185,7 +2192,10 @@ public:
   opt_pass* clone() { return new pass_gimple_null(g); }
 };
 
-pass_gimple_null pass_gimple_null(g);
+gimple_opt_pass *make_pass_gimple_null (gcc::context *ctxt) {
+  return new pass_gimple_null(ctxt);
+}
+//pass_gimple_null pass_gimple_null(g);
 #endif                         /* #if (GCC_MINOR == 9) */
 
 #endif                         /* #if (GCC_MINOR <= 8) */
@@ -2260,7 +2270,10 @@ public:
   opt_pass* clone() { return new pass_gimple_correct_state(g); }
 };
 
-pass_gimple_correct_state pass_gimple_correct_state(g);
+gimple_opt_pass *make_pass_gimple_correct_state (gcc::context *ctxt) {
+  return new pass_gimple_correct_state(ctxt);
+}
+//pass_gimple_correct_state pass_gimple_correct_state(g);
 #endif                         /* #if (GCC_MINOR == 9) */
 
 #endif                         /* #if (GCC_MINOR <= 8) */
@@ -2340,7 +2353,10 @@ public:
   opt_pass* clone() { return new pass_ipa_null(g); }
 };
 
-pass_ipa_null pass_ipa_null(g);
+ipa_opt_pass_d *make_pass_ipa_null (gcc::context *ctxt) {
+  return new pass_ipa_null(ctxt);
+}
+//pass_ipa_null pass_ipa_null(g);
 #endif                         /* #if (GCC_MINOR == 9) */
 
 #endif                         /* #if (GCC_MINOR <= 8) */
@@ -2395,7 +2411,10 @@ public:
   opt_pass* clone() { return new pass_rtl_null(g); }
 };
 
-pass_rtl_null pass_rtl_null(g);
+rtl_opt_pass *make_pass_rtl_null (gcc::context *ctxt) {
+  return new pass_rtl_null(ctxt);
+}
+//pass_rtl_null pass_rtl_null(g);
 #endif                         /* #if (GCC_MINOR == 9) */
 
 #endif                         /* #if (GCC_MINOR <= 8) */
@@ -2451,7 +2470,10 @@ public:
   opt_pass* clone() { return new pass_simple_ipa_null(g); }
 };
 
-pass_simple_ipa_null pass_simple_ipa_null(g);
+simple_ipa_opt_pass *make_pass_simple_ipa_null (gcc::context *ctxt) {
+  return new pass_simple_ipa_null(ctxt);
+}
+//pass_simple_ipa_null pass_simple_ipa_null(g);
 #endif                         /* #if (GCC_MINOR == 9) */
 
 #endif                         /* #if (GCC_MINOR <= 8) */
@@ -2646,7 +2668,8 @@ int __attribute__((visibility("default"))) plugin_init(
     pass_info.pass = &pass_gimple_null.pass;
 //Below lines added by Arun
 #else
-	pass_info.pass = &pass_gimple_null;
+    pass_info.pass = make_pass_gimple_null(g);
+//    pass_info.pass = &pass_gimple_null;
 #endif
 //End of lines added by Arun
     pass_info.reference_pass_name = "veclower";
@@ -2673,7 +2696,8 @@ int __attribute__((visibility("default"))) plugin_init(
     pass_info.pass = &pass_gimple_correct_state.pass;
 //Below lines added by Arun
 #else
-    pass_info.pass = &pass_gimple_correct_state;
+    pass_info.pass = make_pass_gimple_correct_state(g);
+//    pass_info.pass = &pass_gimple_correct_state;
 #endif
 //End of lines added by Arun
     pass_info.reference_pass_name = "early_optimizations";
@@ -2688,7 +2712,8 @@ int __attribute__((visibility("default"))) plugin_init(
     pass_info.pass = &pass_gimple_null.pass;
 //Below lines added by Arun
 #else
-    pass_info.pass = &pass_gimple_null;
+    pass_info.pass = make_pass_gimple_null(g);
+//    pass_info.pass = &pass_gimple_null;
 #endif
 //End of lines added by Arun
     pass_info.reference_pass_name = "early_optimizations";
@@ -2712,7 +2737,8 @@ int __attribute__((visibility("default"))) plugin_init(
     pass_info.pass = &pass_simple_ipa_null.pass;
 //Below lines added by Arun
 #else
-    pass_info.pass = &pass_simple_ipa_null;
+    pass_info.pass = make_pass_simple_ipa_null(g);
+//    pass_info.pass = &pass_simple_ipa_null;
 #endif
 //End of lines added by Arun
     pass_info.reference_pass_name = "increase_alignment";
@@ -2744,7 +2770,8 @@ int __attribute__((visibility("default"))) plugin_init(
     pass_info.pass = &pass_ipa_null.pass;
 //Below lines added by Arun
 #else
-    pass_info.pass = &pass_ipa_null;
+    pass_info.pass = make_pass_ipa_null(g);
+//    pass_info.pass = &pass_ipa_null;
 #endif
 //End of lines added by Arun
     pass_info.reference_pass_name = "cp";
@@ -2761,7 +2788,8 @@ int __attribute__((visibility("default"))) plugin_init(
     pass_info.pass = &pass_ipa_null.pass;
 //Below lines added by Arun
 #else
-    pass_info.pass = &pass_ipa_null;
+    pass_info.pass = make_pass_ipa_null(g);
+//    pass_info.pass = &pass_ipa_null;
 #endif
 //End of lines added by Arun
     pass_info.reference_pass_name = "inline";
@@ -2776,7 +2804,8 @@ int __attribute__((visibility("default"))) plugin_init(
     pass_info.pass = &pass_ipa_null.pass;
 //Below lines added by Arun
 #else
-    pass_info.pass = &pass_ipa_null;
+    pass_info.pass = make_pass_ipa_null(g);
+//    pass_info.pass = &pass_ipa_null;
 #endif
 //End of lines added by Arun
     pass_info.reference_pass_name = "pure-const";
@@ -2791,7 +2820,8 @@ int __attribute__((visibility("default"))) plugin_init(
     pass_info.pass = &pass_ipa_null.pass;
 //Below lines added by Arun
 #else
-    pass_info.pass = &pass_ipa_null;
+    pass_info.pass = make_pass_ipa_null(g);
+//    pass_info.pass = &pass_ipa_null;
 #endif
 //End of lines added by Arun
     pass_info.reference_pass_name = "static-var";
@@ -2815,7 +2845,8 @@ int __attribute__((visibility("default"))) plugin_init(
     pass_info.pass = &pass_simple_ipa_null.pass;
 //Below lines added by Arun
 #else
-    pass_info.pass = &pass_simple_ipa_null;
+    pass_info.pass = make_pass_simple_ipa_null(g);
+//    pass_info.pass = &pass_simple_ipa_null;
 #endif
 //End of lines added by Arun
     pass_info.reference_pass_name = "pta";
@@ -2885,7 +2916,8 @@ int __attribute__((visibility("default"))) plugin_init(
     pass_info.pass = &pass_gimple_null.pass;
 //Below lines added by Arun
 #else
-    pass_info.pass = &pass_gimple_null;
+    pass_info.pass = make_pass_gimple_null(g);
+//    pass_info.pass = &pass_gimple_null;
 #endif
 //End of lines added by Arun
     pass_info.reference_pass_name = "ehdisp";
@@ -2900,7 +2932,8 @@ int __attribute__((visibility("default"))) plugin_init(
     pass_info.pass = &pass_gimple_null.pass;
 //Below lines added by Arun
 #else
-    pass_info.pass = &pass_gimple_null;
+    pass_info.pass = make_pass_gimple_null(g);
+//    pass_info.pass = &pass_gimple_null;
 #endif
 //End of lines added by Arun
     pass_info.reference_pass_name = "*all_optimizations";
@@ -2917,7 +2950,8 @@ int __attribute__((visibility("default"))) plugin_init(
     pass_info.pass = &pass_gimple_null.pass;
 //Below lines added by Arun
 #else
-    pass_info.pass = &pass_gimple_null;
+    pass_info.pass = make_pass_gimple_null(g);
+//    pass_info.pass = &pass_gimple_null;
 #endif
 //End of lines added by Arun
     pass_info.reference_pass_name = "cplxlower0";
@@ -2932,7 +2966,8 @@ int __attribute__((visibility("default"))) plugin_init(
     pass_info.pass = &pass_gimple_null.pass;
 //Below lines added by Arun
 #else
-    pass_info.pass = &pass_gimple_null;
+    pass_info.pass = make_pass_gimple_null(g);
+//    pass_info.pass = &pass_gimple_null;
 #endif
 //End of lines added by Arun
     pass_info.reference_pass_name = "ehcleanup";
@@ -2947,7 +2982,8 @@ int __attribute__((visibility("default"))) plugin_init(
     pass_info.pass = &pass_gimple_null.pass;
 //Below lines added by Arun
 #else
-    pass_info.pass = &pass_gimple_null;
+    pass_info.pass = make_pass_gimple_null(g);
+//    pass_info.pass = &pass_gimple_null;
 #endif
 //End of lines added by Arun
     pass_info.reference_pass_name = "resx";
@@ -2962,7 +2998,8 @@ int __attribute__((visibility("default"))) plugin_init(
     pass_info.pass = &pass_gimple_null.pass;
 //Below lines added by Arun
 #else
-    pass_info.pass = &pass_gimple_null;
+    pass_info.pass = make_pass_gimple_null(g);
+//    pass_info.pass = &pass_gimple_null;
 #endif
 //End of lines added by Arun
     pass_info.reference_pass_name = "nrv";
@@ -2992,7 +3029,8 @@ int __attribute__((visibility("default"))) plugin_init(
     pass_info.pass = &pass_gimple_null.pass;
 //Below lines added by Arun
 #else
-    pass_info.pass = &pass_gimple_null;
+    pass_info.pass = make_pass_gimple_null(g);
+//    pass_info.pass = &pass_gimple_null;
 #endif
 //End of lines added by Arun
     pass_info.reference_pass_name = "optimized";
@@ -3010,7 +3048,8 @@ int __attribute__((visibility("default"))) plugin_init(
   pass_info.pass = &pass_rtl_emit_function.pass;
 //Below lines added by Arun
 #else
-  pass_info.pass = &pass_rtl_emit_function;
+  pass_info.pass = make_pass_rtl_emit_function(g);
+//  pass_info.pass = &pass_rtl_emit_function;
 #endif
 //End of lines added by Arun
   pass_info.reference_pass_name = "expand";
@@ -3028,7 +3067,8 @@ int __attribute__((visibility("default"))) plugin_init(
   pass_info.pass = &pass_rtl_null.pass;
 //Below lines added by Arun
 #else
-  pass_info.pass = &pass_rtl_null;
+  pass_info.pass = make_pass_rtl_null(g);
+//  pass_info.pass = &pass_rtl_null;
 #endif
 //End of lines added by Arun
 #endif
@@ -3043,7 +3083,8 @@ int __attribute__((visibility("default"))) plugin_init(
   pass_info.pass = &pass_rtl_null.pass;
 //Below lines added by Arun
 #else
-  pass_info.pass = &pass_rtl_null;
+  pass_info.pass = make_pass_rtl_null(g);
+//  pass_info.pass = &pass_rtl_null;
 #endif
 //End of lines added by Arun
   pass_info.reference_pass_name = "*clean_state";
