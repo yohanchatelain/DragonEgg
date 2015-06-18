@@ -1670,7 +1670,7 @@ int plugin_is_GPL_compatible __attribute__((visibility("default")));
 static void llvm_start_unit(void */*gcc_data*/, void */*user_data*/) {
   if (!quiet_flag)
     errs() << "Starting compilation unit\n";
-
+/*
 #ifdef ENABLE_LTO
   // Output LLVM IR if the user requested generation of lto data.
   EmitIR |= flag_generate_lto != 0;
@@ -1684,7 +1684,7 @@ static void llvm_start_unit(void */*gcc_data*/, void */*user_data*/) {
   flag_generate_lto = 1;
   flag_whole_program = 0;
 #endif
-
+*/
   // Stop GCC outputting serious amounts of debug info.
   debug_hooks = &do_nothing_debug_hooks;
 
@@ -1732,7 +1732,12 @@ static void emit_cgraph_aliases(struct cgraph_node *node) {
     if (lookup_attribute("weakref",
                          DECL_ATTRIBUTES(cgraph_symbol(alias)->decl)))
       continue;
-    emit_alias(cgraph_symbol(alias)->decl, alias->thunk.alias);
+
+// Below line commented by Arun as a fix for some checks segfaulting
+//    emit_alias(cgraph_symbol(alias)->decl, alias->thunk.alias);
+// Below line added by Arun as a fix for some checks segfaulting
+    emit_alias(cgraph_symbol(alias)->decl, node->decl);
+
     emit_cgraph_aliases(alias);
   }
 #endif
@@ -1836,10 +1841,6 @@ public:
   {}
 
   unsigned int execute () {
-// Lines added by Arun in attempt to find why no IR is emitted for functions
-    printf ("rtl_emit_function::execute called \n");
-// End of lines added by Arun
-
     if (!errorcount && !sorrycount) {
       InitializeBackend();
       // Convert the function.
