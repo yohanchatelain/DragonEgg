@@ -120,6 +120,13 @@ struct GTY(()) tree2WeakVH {
 static GTY((if_marked("tree2WeakVH_marked_p"), param_is(struct tree2WeakVH)))
     htab_t WeakVHCache;
 
+// Below lines added by Arun in attempt to compile with gcc-5
+#define ggc_alloc_tree2WeakVH() ((struct tree2WeakVH *)(ggc_internal_alloc (sizeof (struct tree2WeakVH) MEM_STAT_INFO)))
+#define ggc_alloc_tree2int() ((struct tree2int *)(ggc_internal_alloc (sizeof (struct tree2int) MEM_STAT_INFO)))
+#define ggc_alloc_tree2Type() ((struct tree2Type *)(ggc_internal_alloc (sizeof (struct tree2Type) MEM_STAT_INFO)))
+// End of lines added by Arun
+
+/*
 // Include the garbage collector header.
 #ifndef ENABLE_BUILD_WITH_CXX
 extern "C" {
@@ -128,7 +135,7 @@ extern "C" {
 #ifndef ENABLE_BUILD_WITH_CXX
 } // extern "C"
 #endif
-
+*/
 bool getCachedInteger(tree t, int &Val) {
   if (!intCache)
     return false;
@@ -142,7 +149,13 @@ bool getCachedInteger(tree t, int &Val) {
 
 void setCachedInteger(tree t, int Val) {
   if (!intCache)
+// Below lines added by Arun in attempt to compile with gcc-5
+#if (GCC_MAJOR == 5)
+    intCache = htab_create(1024, tree2int_hash, tree2int_eq, 0);
+#else
+// End of lines added by Arun
     intCache = htab_create_ggc(1024, tree2int_hash, tree2int_eq, 0);
+#endif      // GCC_MAJOR == 5, added by Arun
 
   tree_map_base in = { t };
   tree2int **slot = (tree2int **)htab_find_slot(intCache, &in, INSERT);
@@ -167,7 +180,7 @@ Type *getCachedType(tree t) {
 void setCachedType(tree t, Type *Ty) {
   tree_map_base in = { t };
 
-  /* If deleting, remove the slot.  */
+  // If deleting, remove the slot.  
   if (!Ty) {
     if (TypeCache)
       htab_remove_elt(TypeCache, &in);
@@ -175,7 +188,13 @@ void setCachedType(tree t, Type *Ty) {
   }
 
   if (!TypeCache)
+// Below lines added by Arun in attempt to compile with gcc-5
+#if (GCC_MAJOR == 5)
+    TypeCache = htab_create(1024, tree2Type_hash, tree2Type_eq, 0);
+#else
+// End of lines added by Arun
     TypeCache = htab_create_ggc(1024, tree2Type_hash, tree2Type_eq, 0);
+#endif      // GCC_MAJOR == 5, added by Arun
 
   tree2Type **slot = (tree2Type **)htab_find_slot(TypeCache, &in, INSERT);
   assert(slot && "Failed to create hash table slot!");
@@ -216,8 +235,15 @@ void setCachedValue(tree t, Value *V) {
   }
 
   if (!WeakVHCache)
+// Below lines added by Arun in attempt to compile with gcc-5
+#if (GCC_MAJOR == 5)
+    WeakVHCache =
+        htab_create(1024, tree2WeakVH_hash, tree2WeakVH_eq, DestructWeakVH);
+#else
+// End of lines added by Arun
     WeakVHCache =
         htab_create_ggc(1024, tree2WeakVH_hash, tree2WeakVH_eq, DestructWeakVH);
+#endif     // GCC_MAJOR == 5, added by Arun
 
   tree2WeakVH **slot = (tree2WeakVH **)htab_find_slot(WeakVHCache, &in, INSERT);
   assert(slot && "Failed to create hash table slot!");
@@ -233,3 +259,4 @@ void setCachedValue(tree t, Value *V) {
   assert(W == &(*slot)->V && "Pointer was displaced!");
   (void)W;
 }
+

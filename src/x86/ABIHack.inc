@@ -35,6 +35,9 @@ extern "C" {
 #include "tm.h"
 #include "rtl.h"
 #include "tree.h"
+// Below lines added by Arun in attempt to compile using gcc-5
+#include "ipa-ref.h"
+// End of lines added by Arun
 #include "tm_p.h"
 #include "hard-reg-set.h"
 #include "real.h"

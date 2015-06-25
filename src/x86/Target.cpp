@@ -43,6 +43,17 @@ extern "C" {
 #include "system.h"
 #include "coretypes.h"
 #include "target.h"
+// Below lines added by Arun in attempt to compile with gcc-5
+#include "plugin-api.h"
+#include "vec.h"
+#include "ipa-ref.h"
+#include "alias.h"
+#include "double-int.h"
+#include "hash-set.h"
+#include "inchash.h"
+#include "input.h"
+#include "symtab.h"
+// End of lines added by Arun
 #include "tree.h"
 
 #include "diagnostic.h"
@@ -56,6 +67,9 @@ extern "C" {
   #include "basic-block.h"
   #include "gimple-expr.h"
   /* End of lines inserted by Tarun to get this to work with GCC 4.9 */
+// Below line added by Arun in attempt to compile with gcc-5
+#include "fold-const.h"
+// End of lines added by Arun
 #include "gimple.h"
 #include "gimple-pretty-print.h"
 #include "toplev.h"

@@ -109,10 +109,6 @@ extern "C" {
 #include "gimple.h"
 #include "gimple-iterator.h"
 
-  //Below line was in gimple.h
-  extern bool validate_gimple_arglist (const_gimple, ...);
-
-
 #include "tree-pass.h"
 
   using namespace llvm;
@@ -4409,7 +4405,7 @@ bool TreeToLLVM::EmitBuiltinCall(gimple stmt, tree fndecl,
     return EmitBuiltinUnwindInit(stmt, Result);
 
   case BUILT_IN_OBJECT_SIZE: {
-    if (!validate_gimple_arglist(stmt, POINTER_TYPE, INTEGER_TYPE, VOID_TYPE)) {
+    if (!validate_gimple_arglist(as_a <const gcall*> (stmt), POINTER_TYPE, INTEGER_TYPE, VOID_TYPE)) {
       error("Invalid builtin_object_size argument types");
       return false;
     }
@@ -4919,7 +4915,7 @@ bool TreeToLLVM::EmitBuiltinCall(gimple stmt, tree fndecl,
 
 #if 1 // FIXME: Should handle these GCC extensions eventually.
   case BUILT_IN_LONGJMP: {
-    if (validate_gimple_arglist(stmt, POINTER_TYPE, INTEGER_TYPE, VOID_TYPE)) {
+    if (validate_gimple_arglist(as_a <const gcall*> (stmt), POINTER_TYPE, INTEGER_TYPE, VOID_TYPE)) {
       tree value = gimple_call_arg(stmt, 1);
 
       if (!isa<INTEGER_CST>(value) ||
@@ -4993,7 +4989,7 @@ Value *TreeToLLVM::EmitBuiltinSQRT(gimple stmt) {
 }
 
 Value *TreeToLLVM::EmitBuiltinPOWI(gimple stmt) {
-  if (!validate_gimple_arglist(stmt, REAL_TYPE, INTEGER_TYPE, VOID_TYPE))
+  if (!validate_gimple_arglist(as_a <const gcall*> (stmt), REAL_TYPE, INTEGER_TYPE, VOID_TYPE))
     return 0;
 
   Value *Val = EmitMemory(gimple_call_arg(stmt, 0));
@@ -5010,7 +5006,7 @@ Value *TreeToLLVM::EmitBuiltinPOWI(gimple stmt) {
 }
 
 Value *TreeToLLVM::EmitBuiltinPOW(gimple stmt) {
-  if (!validate_gimple_arglist(stmt, REAL_TYPE, REAL_TYPE, VOID_TYPE))
+  if (!validate_gimple_arglist(as_a <const gcall*> (stmt), REAL_TYPE, REAL_TYPE, VOID_TYPE))
     return 0;
 
   Value *Val = EmitMemory(gimple_call_arg(stmt, 0));
@@ -5025,7 +5021,7 @@ Value *TreeToLLVM::EmitBuiltinPOW(gimple stmt) {
 }
 
 Value *TreeToLLVM::EmitBuiltinLCEIL(gimple stmt) {
-  if (!validate_gimple_arglist(stmt, REAL_TYPE, VOID_TYPE))
+  if (!validate_gimple_arglist(as_a <const gcall*> (stmt), REAL_TYPE, VOID_TYPE))
     return 0;
 
   // Cast the result of "ceil" to the appropriate integer type.
@@ -5045,7 +5041,7 @@ Value *TreeToLLVM::EmitBuiltinLCEIL(gimple stmt) {
 }
 
 Value *TreeToLLVM::EmitBuiltinLFLOOR(gimple stmt) {
-  if (!validate_gimple_arglist(stmt, REAL_TYPE, VOID_TYPE))
+  if (!validate_gimple_arglist(as_a <const gcall*> (stmt), REAL_TYPE, VOID_TYPE))
     return 0;
 
   // Cast the result of "floor" to the appropriate integer type.
@@ -5065,7 +5061,7 @@ Value *TreeToLLVM::EmitBuiltinLFLOOR(gimple stmt) {
 }
 
 Value *TreeToLLVM::EmitBuiltinLROUND(gimple stmt) {
-  if (!validate_gimple_arglist(stmt, REAL_TYPE, VOID_TYPE))
+  if (!validate_gimple_arglist(as_a <const gcall*> (stmt), REAL_TYPE, VOID_TYPE))
     return 0;
 
   // Cast the result of "lround" to the appropriate integer type.
@@ -5085,7 +5081,7 @@ Value *TreeToLLVM::EmitBuiltinLROUND(gimple stmt) {
 }
 
 Value *TreeToLLVM::EmitBuiltinCEXPI(gimple stmt) {
-  if (!validate_gimple_arglist(stmt, REAL_TYPE, VOID_TYPE))
+  if (!validate_gimple_arglist(as_a <const gcall*> (stmt), REAL_TYPE, VOID_TYPE))
     return 0;
 
   if (TARGET_LIBC_HAS_FUNCTION(function_sincos)) {
@@ -5301,12 +5297,12 @@ static bool OptimizeIntoPlainBuiltIn(gimple stmt, Value * Len,
 bool TreeToLLVM::EmitBuiltinMemCopy(gimple stmt, Value * &Result,
                                     bool isMemMove, bool SizeCheck) {
   if (SizeCheck) {
-    if (!validate_gimple_arglist(stmt, POINTER_TYPE, POINTER_TYPE,
-                                 INTEGER_TYPE, INTEGER_TYPE, VOID_TYPE))
+    if (!validate_gimple_arglist(as_a <const gcall*> (stmt), POINTER_TYPE,
+                     POINTER_TYPE, INTEGER_TYPE, INTEGER_TYPE, VOID_TYPE))
       return false;
   } else {
-    if (!validate_gimple_arglist(stmt, POINTER_TYPE, POINTER_TYPE,
-                                 INTEGER_TYPE, VOID_TYPE))
+    if (!validate_gimple_arglist(as_a <const gcall*> (stmt), POINTER_TYPE,
+                     POINTER_TYPE, INTEGER_TYPE, VOID_TYPE))
       return false;
   }
 
@@ -5334,12 +5330,12 @@ bool TreeToLLVM::EmitBuiltinMemCopy(gimple stmt, Value * &Result,
 bool TreeToLLVM::EmitBuiltinMemSet(gimple stmt, Value * &Result,
                                    bool SizeCheck) {
   if (SizeCheck) {
-    if (!validate_gimple_arglist(stmt, POINTER_TYPE, INTEGER_TYPE,
-                                 INTEGER_TYPE, INTEGER_TYPE, VOID_TYPE))
+    if (!validate_gimple_arglist(as_a <const gcall*> (stmt), POINTER_TYPE,
+                     INTEGER_TYPE, INTEGER_TYPE, INTEGER_TYPE, VOID_TYPE))
       return false;
   } else {
-    if (!validate_gimple_arglist(stmt, POINTER_TYPE, INTEGER_TYPE,
-                                 INTEGER_TYPE, VOID_TYPE))
+    if (!validate_gimple_arglist(as_a <const gcall*> (stmt), POINTER_TYPE,
+                     INTEGER_TYPE, INTEGER_TYPE, VOID_TYPE))
       return false;
   }
 
@@ -5360,7 +5356,7 @@ bool TreeToLLVM::EmitBuiltinMemSet(gimple stmt, Value * &Result,
 }
 
 bool TreeToLLVM::EmitBuiltinBZero(gimple stmt, Value * &/*Result*/) {
-  if (!validate_gimple_arglist(stmt, POINTER_TYPE, INTEGER_TYPE, VOID_TYPE))
+  if (!validate_gimple_arglist(as_a <const gcall*> (stmt), POINTER_TYPE, INTEGER_TYPE, VOID_TYPE))
     return false;
 
   tree Dst = gimple_call_arg(stmt, 0);
@@ -5374,7 +5370,7 @@ bool TreeToLLVM::EmitBuiltinBZero(gimple stmt, Value * &/*Result*/) {
 }
 
 bool TreeToLLVM::EmitBuiltinPrefetch(gimple stmt) {
-  if (!validate_gimple_arglist(stmt, POINTER_TYPE, 0))
+  if (!validate_gimple_arglist(as_a <const gcall*> (stmt), POINTER_TYPE, 0))
     return false;
 
   Value *Ptr = EmitMemory(gimple_call_arg(stmt, 0));
@@ -5435,7 +5431,7 @@ bool TreeToLLVM::EmitBuiltinPrefetch(gimple stmt) {
 /// instruction, depending on whether isFrame is true or not.
 bool TreeToLLVM::EmitBuiltinReturnAddr(gimple stmt, Value * &Result,
                                        bool isFrame) {
-  if (!validate_gimple_arglist(stmt, INTEGER_TYPE, VOID_TYPE))
+  if (!validate_gimple_arglist(as_a <const gcall*> (stmt), INTEGER_TYPE, VOID_TYPE))
     return false;
 
   ConstantInt *Level =
@@ -5488,7 +5484,7 @@ bool TreeToLLVM::EmitBuiltinFrobReturnAddr(gimple stmt, Value * &Result) {
 }
 
 bool TreeToLLVM::EmitBuiltinStackSave(gimple stmt, Value * &Result) {
-  if (!validate_gimple_arglist(stmt, VOID_TYPE))
+  if (!validate_gimple_arglist(as_a <const gcall*> (stmt), VOID_TYPE))
     return false;
 
   Result = Builder.CreateCall(
@@ -5567,7 +5563,7 @@ bool TreeToLLVM::EmitBuiltinEHPointer(gimple stmt, Value * &Result) {
 #endif
 
 bool TreeToLLVM::EmitBuiltinDwarfCFA(gimple stmt, Value * &Result) {
-  if (!validate_gimple_arglist(stmt, VOID_TYPE))
+  if (!validate_gimple_arglist(as_a <const gcall*> (stmt), VOID_TYPE))
     return false;
 
   int cfa_offset = ARG_POINTER_CFA_OFFSET(exp);
@@ -5581,7 +5577,7 @@ bool TreeToLLVM::EmitBuiltinDwarfCFA(gimple stmt, Value * &Result) {
 }
 
 bool TreeToLLVM::EmitBuiltinDwarfSPColumn(gimple stmt, Value * &Result) {
-  if (!validate_gimple_arglist(stmt, VOID_TYPE))
+  if (!validate_gimple_arglist(as_a <const gcall*> (stmt), VOID_TYPE))
     return false;
 
   unsigned int dwarf_regnum = DWARF_FRAME_REGNUM(STACK_POINTER_REGNUM);
@@ -5594,7 +5590,7 @@ bool TreeToLLVM::EmitBuiltinDwarfSPColumn(gimple stmt, Value * &Result) {
 bool TreeToLLVM::EmitBuiltinEHReturnDataRegno(gimple stmt,
                                               Value * &Result) {
 #ifdef EH_RETURN_DATA_REGNO
-  if (!validate_gimple_arglist(stmt, INTEGER_TYPE, VOID_TYPE))
+  if (!validate_gimple_arglist(as_a <const gcall*> (stmt), INTEGER_TYPE, VOID_TYPE))
     return false;
 
   tree which = gimple_call_arg(stmt, 0);
@@ -5620,7 +5616,7 @@ bool TreeToLLVM::EmitBuiltinEHReturnDataRegno(gimple stmt,
 }
 
 bool TreeToLLVM::EmitBuiltinEHReturn(gimple stmt, Value * &/*Result*/) {
-  if (!validate_gimple_arglist(stmt, INTEGER_TYPE, POINTER_TYPE, VOID_TYPE))
+  if (!validate_gimple_arglist(as_a <const gcall*> (stmt), INTEGER_TYPE, POINTER_TYPE, VOID_TYPE))
     return false;
 
   Type *IntPtr = DL.getIntPtrType(Context, 0);
@@ -5648,7 +5644,7 @@ bool TreeToLLVM::EmitBuiltinInitDwarfRegSizes(gimple stmt,
   bool wrote_return_column = false;
   static bool reg_modes_initialized = false;
 
-  if (!validate_gimple_arglist(stmt, POINTER_TYPE, VOID_TYPE))
+  if (!validate_gimple_arglist(as_a <const gcall*> (stmt), POINTER_TYPE, VOID_TYPE))
     return false;
 
   if (!reg_modes_initialized) {
@@ -5711,7 +5707,7 @@ bool TreeToLLVM::EmitBuiltinInitDwarfRegSizes(gimple stmt,
 }
 
 bool TreeToLLVM::EmitBuiltinUnwindInit(gimple stmt, Value * &/*Result*/) {
-  if (!validate_gimple_arglist(stmt, VOID_TYPE))
+  if (!validate_gimple_arglist(as_a <const gcall*> (stmt), VOID_TYPE))
     return false;
 
   Builder.CreateCall(
@@ -5721,7 +5717,7 @@ bool TreeToLLVM::EmitBuiltinUnwindInit(gimple stmt, Value * &/*Result*/) {
 }
 
 bool TreeToLLVM::EmitBuiltinStackRestore(gimple stmt) {
-  if (!validate_gimple_arglist(stmt, POINTER_TYPE, VOID_TYPE))
+  if (!validate_gimple_arglist(as_a <const gcall*> (stmt), POINTER_TYPE, VOID_TYPE))
     return false;
 
   Value *Ptr = EmitMemory(gimple_call_arg(stmt, 0));
@@ -5733,7 +5729,7 @@ bool TreeToLLVM::EmitBuiltinStackRestore(gimple stmt) {
 }
 
 bool TreeToLLVM::EmitBuiltinAlloca(gimple stmt, Value * &Result) {
-  if (!validate_gimple_arglist(stmt, INTEGER_TYPE, VOID_TYPE))
+  if (!validate_gimple_arglist(as_a <const gcall*> (stmt), INTEGER_TYPE, VOID_TYPE))
     return false;
   Value *Amt = EmitMemory(gimple_call_arg(stmt, 0));
   AllocaInst *Alloca = Builder.CreateAlloca(Type::getInt8Ty(Context), Amt);
@@ -5743,7 +5739,7 @@ bool TreeToLLVM::EmitBuiltinAlloca(gimple stmt, Value * &Result) {
 }
 
 bool TreeToLLVM::EmitBuiltinAllocaWithAlign(gimple stmt, Value * &Result) {
-  if (!validate_gimple_arglist(stmt, INTEGER_TYPE, INTEGER_TYPE, VOID_TYPE))
+  if (!validate_gimple_arglist(as_a <const gcall*> (stmt), INTEGER_TYPE, INTEGER_TYPE, VOID_TYPE))
     return false;
   Value *Amt = EmitMemory(gimple_call_arg(stmt, 0));
   uint64_t Align = getInt64(gimple_call_arg(stmt, 1), true);
@@ -5754,7 +5750,7 @@ bool TreeToLLVM::EmitBuiltinAllocaWithAlign(gimple stmt, Value * &Result) {
 }
 
 bool TreeToLLVM::EmitBuiltinAssumeAligned(gimple stmt, Value * &Result) {
-  if (!validate_gimple_arglist(stmt, POINTER_TYPE, INTEGER_TYPE, VOID_TYPE))
+  if (!validate_gimple_arglist(as_a <const gcall*> (stmt), POINTER_TYPE, INTEGER_TYPE, VOID_TYPE))
     return false;
   // Return the pointer argument.  TODO: Pass the alignment information on to
   // the optimizers.
@@ -5843,7 +5839,7 @@ bool TreeToLLVM::EmitBuiltinVACopy(gimple stmt) {
 }
 
 bool TreeToLLVM::EmitBuiltinAdjustTrampoline(gimple stmt, Value * &Result) {
-  if (!validate_gimple_arglist(stmt, POINTER_TYPE, VOID_TYPE))
+  if (!validate_gimple_arglist(as_a <const gcall*> (stmt), POINTER_TYPE, VOID_TYPE))
     return false;
 
   Function *Intr =
@@ -5855,8 +5851,8 @@ bool TreeToLLVM::EmitBuiltinAdjustTrampoline(gimple stmt, Value * &Result) {
 }
 
 bool TreeToLLVM::EmitBuiltinInitTrampoline(gimple stmt, bool OnStack) {
-  if (!validate_gimple_arglist(stmt, POINTER_TYPE, POINTER_TYPE,
-                               POINTER_TYPE, VOID_TYPE))
+  if (!validate_gimple_arglist(as_a <const gcall*> (stmt), POINTER_TYPE,
+                     POINTER_TYPE, POINTER_TYPE, VOID_TYPE))
     return false;
 
   Value *Tramp = EmitRegister(gimple_call_arg(stmt, 0));

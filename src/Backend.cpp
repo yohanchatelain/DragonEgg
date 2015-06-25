@@ -998,7 +998,9 @@ static void emit_varpool_aliases(struct varpool_node *node) {
                          DECL_ATTRIBUTES(varpool_symbol(alias)->decl)))
       continue;
 
-    emit_alias(varpool_symbol(alias)->decl, alias->alias_target);
+    emit_alias(varpool_symbol(alias)->decl, alias->get_alias_target()->decl);
+// Below line commented and above line added by Arun to compile with gcc-5
+//    emit_alias(varpool_symbol(alias)->decl, alias->alias_target);
     emit_varpool_aliases(alias);
   }
 }
@@ -1567,7 +1569,7 @@ int plugin_is_GPL_compatible __attribute__((visibility("default")));
 static void llvm_start_unit(void */*gcc_data*/, void */*user_data*/) {
   if (!quiet_flag)
     errs() << "Starting compilation unit\n";
-
+/*
 #ifdef ENABLE_LTO
   // Output LLVM IR if the user requested generation of lto data.
   EmitIR |= flag_generate_lto != 0;
@@ -1576,7 +1578,7 @@ static void llvm_start_unit(void */*gcc_data*/, void */*user_data*/) {
   flag_generate_lto = 1;
   flag_whole_program = 0;
 #endif
-
+*/
   // Stop GCC outputting serious amounts of debug info.
   debug_hooks = &do_nothing_debug_hooks;
 
@@ -1612,7 +1614,10 @@ static void emit_cgraph_aliases(struct cgraph_node *node) {
     if (lookup_attribute("weakref",
                          DECL_ATTRIBUTES(cgraph_symbol(alias)->decl)))
       continue;
-    emit_alias(cgraph_symbol(alias)->decl, alias->thunk.alias);
+
+    emit_alias(cgraph_symbol(alias)->decl, node->decl);
+// Below line commented and above line added by Arun to compile with gcc-5
+//    emit_alias(cgraph_symbol(alias)->decl, alias->thunk.alias);
     emit_cgraph_aliases(alias);
   }
 }
@@ -1662,7 +1667,7 @@ public:
     : rtl_opt_pass (pass_data_rtl_emit_function, ctxt)
   {}
 
-  unsigned int execute () {
+  unsigned int execute (function *) {
     if (!errorcount && !sorrycount) {
       InitializeBackend();
       // Convert the function.
@@ -1679,6 +1684,8 @@ public:
     TREE_ASM_WRITTEN(current_function_decl) = 1;
     return 0;
   }
+
+  opt_pass* clone () { return new pass_rtl_emit_function(g); }
 };
 
 pass_rtl_emit_function pass_rtl_emit_function(g);
@@ -1934,7 +1941,9 @@ public:
     : gimple_opt_pass (pass_data_gimple_null, ctxt)
   {}
 
-  bool gate () { return false; }
+  bool gate (function *) { return false; }
+
+  opt_pass* clone () { return new pass_gimple_null(g); }
 };
 
 pass_gimple_null pass_gimple_null(g);
@@ -1957,13 +1966,15 @@ public:
     : gimple_opt_pass (pass_data_gimple_correct_state, ctxt)
   {}
 
-  bool gate () { return true; }
+  bool gate (function *) { return true; }
 
-  unsigned int execute () {
+  unsigned int execute (function *) {
     if (symtab->state < symtab_state::IPA_SSA)
       symtab->state = symtab_state::IPA_SSA;
     return 0;
   }
+
+  opt_pass* clone () { return new pass_gimple_correct_state(g); }
 };
 
 pass_gimple_correct_state pass_gimple_correct_state(g);
@@ -1996,7 +2007,9 @@ public:
                      )
   {}
 
-  bool gate () { return false; }
+  bool gate (function *) { return false; }
+
+  opt_pass* clone () { return new pass_ipa_null(g); }
 };
 
 pass_ipa_null pass_ipa_null(g);
@@ -2019,7 +2032,9 @@ public:
     : rtl_opt_pass (pass_data_rtl_null, ctxt)
   {}
 
-  bool gate () { return false; }
+  bool gate (function *) { return false; }
+
+  opt_pass* clone () { return new pass_rtl_null(g); }
 };
 
 pass_rtl_null pass_rtl_null(g);
@@ -2042,7 +2057,9 @@ public:
     : simple_ipa_opt_pass (pass_data_simple_ipa_null, ctxt)
   {}
 
-  bool gate () { return false; }
+  bool gate (function *) { return false; }
+
+  opt_pass* clone () { return new pass_simple_ipa_null(g); }
 };
 
 pass_simple_ipa_null pass_simple_ipa_null(g);
@@ -2194,9 +2211,10 @@ int __attribute__((visibility("default"))) plugin_init(
   TakeoverAsmOutput();
 
   // Register our garbage collector roots.
-  register_callback(plugin_name, PLUGIN_REGISTER_GGC_CACHES, NULL,
+// Below block commented by Arun in attempt to compile using gcc-5
+/*  register_callback(plugin_name, PLUGIN_REGISTER_GGC_CACHES, NULL,
                     const_cast<ggc_cache_tab *>(gt_ggc_rc__gt_cache_h));
-
+*/
   // Perform late initialization just before processing the compilation unit.
   register_callback(plugin_name, PLUGIN_START_UNIT, llvm_start_unit, NULL);
 
@@ -2315,7 +2333,7 @@ int __attribute__((visibility("default"))) plugin_init(
     register_callback(plugin_name, PLUGIN_PASS_MANAGER_SETUP, NULL, &pass_info);
 
   }
-
+/* Block comment by Arun in attempt to compile with gcc-5
   // Disable all LTO passes.
     pass_info.pass = &pass_ipa_null;
   pass_info.reference_pass_name = "lto_gimple_out";
@@ -2328,7 +2346,7 @@ int __attribute__((visibility("default"))) plugin_init(
   pass_info.ref_pass_instance_number = 0;
   pass_info.pos_op = PASS_POS_REPLACE;
   register_callback(plugin_name, PLUGIN_PASS_MANAGER_SETUP, NULL, &pass_info);
-
+*/
   // Output GCC global variables, aliases and asm's to the IR.  This needs to be
   // done before the compilation unit is finished, since aliases are no longer
   // available then.  On the other hand it seems wise to output them after the
@@ -2380,14 +2398,14 @@ int __attribute__((visibility("default"))) plugin_init(
     pass_info.ref_pass_instance_number = 0;
     pass_info.pos_op = PASS_POS_REPLACE;
     register_callback(plugin_name, PLUGIN_PASS_MANAGER_SETUP, NULL, &pass_info);
-
+/* Block comment by Arun in attempt to compile with gcc-5 
     // Disable pass_mudflap_2. ???
     pass_info.pass = &pass_gimple_null;
     pass_info.reference_pass_name = "mudflap2";
     pass_info.ref_pass_instance_number = 0;
     pass_info.pos_op = PASS_POS_REPLACE;
     register_callback(plugin_name, PLUGIN_PASS_MANAGER_SETUP, NULL, &pass_info);
-
+*/
     // Disable pass_cleanup_cfg_post_optimizing.
     pass_info.pass = &pass_gimple_null;
     pass_info.reference_pass_name = "optimized";
