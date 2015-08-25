@@ -24,7 +24,8 @@ TOP_DIR?=$(CURDIR)
 #DISABLE_VERSION_CHECK=1
 
 # Where to find the lit.py script and modules, used for running tests.
-LIT_DIR?=$(shell $(LLVM_CONFIG) --src-root)/utils/lit
+# LIT_DIR?=$(shell $(LLVM_CONFIG) --src-root)/utils/lit
+LIT_DIR=/usr/bin
 # Where to find LLVM utils, used for running tests.
 LLVM_TOOLS_DIR?=$(shell $(LLVM_CONFIG) --bindir)
 
@@ -41,8 +42,8 @@ COMMON_FLAGS+=-DENABLE_LLVM_PLUGINS
 else
 COMMON_FLAGS+=-fvisibility=hidden
 endif
-CFLAGS+=$(COMMON_FLAGS) $(shell $(LLVM_CONFIG) --cflags)
-CXXFLAGS+=$(COMMON_FLAGS) $(shell $(LLVM_CONFIG) --cxxflags)
+CFLAGS+=$(COMMON_FLAGS) $(shell $(LLVM_CONFIG) --cflags) -g
+CXXFLAGS+=$(COMMON_FLAGS) $(shell $(LLVM_CONFIG) --cxxflags) -g
 
 ifeq ($(shell uname),Darwin)
 LOADABLE_MODULE_OPTIONS=-bundle -undefined dynamic_lookup
@@ -172,13 +173,13 @@ $(LIT_SITE_CONFIG): $(TEST_SRC_DIR)/dragonegg-lit.site.cfg.in
 .PHONY: check-compilator
 check-compilator: $(PLUGIN) $(LIT_SITE_CONFIG)
 	@echo "Running test suite 'compilator'"
-	$(QUIET)$(LIT_DIR)/lit.py $(LIT_ARGS) --param site="$(LIT_SITE_CONFIG)" \
+	$(QUIET)$(LIT_DIR)/lit $(LIT_ARGS) --param site="$(LIT_SITE_CONFIG)" \
 	--config-prefix=compilator-lit $(TEST_SRC_DIR)/compilator
 
 .PHONY: check-validator
 check-validator: $(PLUGIN) $(LIT_SITE_CONFIG)
 	@echo "Running test suite 'validator'"
-	$(QUIET)$(LIT_DIR)/lit.py $(LIT_ARGS) --param site="$(LIT_SITE_CONFIG)" \
+	$(QUIET)$(LIT_DIR)/lit $(LIT_ARGS) --param site="$(LIT_SITE_CONFIG)" \
 	--config-prefix=validator-lit $(TEST_SRC_DIR)/validator
 
 .PHONY: check
