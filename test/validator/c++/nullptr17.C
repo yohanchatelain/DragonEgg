@@ -1,5 +1,5 @@
 // RUN: %dragonegg -xc++ -S -std=c++0x -o /dev/null %s
-// XFAIL: gcc-4.5
+// XFAIL: gcc-4.5, gcc-5.0, gcc-5.1, gcc-5.2
 // PR14777
 template <typename T, typename U> struct tType_equal;
 template <typename T> struct tType_equal<T, T> { typedef void type; };
