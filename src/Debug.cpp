@@ -251,7 +251,7 @@ void DebugInfo::EmitFunctionStart(tree FnDecl, Function *Fn) {
     DISubprogram SPDecl(cast<MDNode>(I->second));
     DISubprogram SP = CreateSubprogramDefinition(SPDecl, lineno, Fn);
     // Below line commented by Tarun in attempt to compile using llvm-3.6
-    // SPDecl->replaceAllUsesWith(SP);
+    SPDecl.replaceAllUsesWith(SP);
 
     // Push function on region stack.
 // Below two lines commented by Arun in attempt to compile using llvm-3.6
@@ -281,7 +281,7 @@ void DebugInfo::EmitFunctionStart(tree FnDecl, Function *Fn) {
     DISubprogram SPDecl(cast<MDNode>(I->second));
     DISubprogram SP = CreateSubprogramDefinition(SPDecl, lineno, Fn);
     // Below line commented by Tarun in attempt to compile using llvm-3.6
-    // SPDecl->replaceAllUsesWith(SP);
+    SPDecl.replaceAllUsesWith(SP);
 
     // Push function on region stack.
 // Below two lines commented by Arun in attempt to compile using llvm-3.6
@@ -585,7 +585,7 @@ DIType DebugInfo::createMethodType(tree type) {
   // Now that we have a real decl for the struct, replace anything using the
   // old decl with the new one.  This will recursively update the debug info.
   // Below line commented by Tarun in attempt to compile using llvm-3.6
-  // llvm::DIType(FwdTypeNode).replaceAllUsesWith(RealType);
+  llvm::DIType(cast<MDNode>(FwdTypeNode)).replaceAllUsesWith(RealType);
 
   return RealType;
 }
@@ -923,7 +923,7 @@ DIType DebugInfo::createStructType(tree type) {
   // Now that we have a real decl for the struct, replace anything using the
   // old decl with the new one.  This will recursively update the debug info.
   // Below line commented by Tarun in attempt to compile using llvm-3.6
-  // llvm::DIType(FwdDeclNode).replaceAllUsesWith(RealDecl);
+  llvm::DIType(cast<MDNode>(FwdDeclNode)).replaceAllUsesWith(RealDecl);
 
   return RealDecl;
 }
