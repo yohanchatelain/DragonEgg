@@ -37,7 +37,19 @@ extern "C" {
 // Stop GCC declaring 'getopt' as it can clash with the system's declaration.
 #undef HAVE_DECL_GETOPT
 #include "system.h"
+#if (GCC_MAJOR == 5)
+#include "symtab.h"
+#endif
 #include "coretypes.h"
+#if (GCC_MAJOR == 5)
+#include "hash-set.h"
+#include "vec.h"
+#include "input.h"
+#include "alias.h"
+#include "inchash.h"  
+#include "double-int.h"
+#include "libiberty.h"
+#endif
 #include "tm.h"
 #include "tree.h"
 
@@ -163,13 +175,24 @@ std::string getDescriptiveName(const_tree t) {
 /// the truncated value must sign-/zero-extend to the original.
 APInt getAPIntValue(const_tree exp, unsigned Bitwidth) {
   assert(isa<INTEGER_CST>(exp) && "Expected an integer constant!");
+#if (GCC_MAJOR == 5)
+  widest_int val = wi::to_widest(exp);
+#else
   double_int val = tree_to_double_int(exp);
+#endif
   unsigned DefaultWidth = TYPE_PRECISION(TREE_TYPE(exp));
 
   APInt DefaultValue;
   if (integerPartWidth == HOST_BITS_PER_WIDE_INT) {
+#if (GCC_MAJOR == 5)  // NOTE this may be llvm stuff in which case the #if is incorrect
+    DefaultValue = APInt(DefaultWidth, llvm::makeArrayRef((const integerPart *)val.get_val(), 2));
+#else
     DefaultValue = APInt(DefaultWidth, /*numWords*/ 2, (integerPart *)&val);
+#endif
   } else {
+#if (GCC_MAJOR == 5)
+    assert("Unsupported host integer width!");
+#else
     assert(integerPartWidth == 2 * HOST_BITS_PER_WIDE_INT &&
            "Unsupported host integer width!");
     unsigned ShiftAmt = HOST_BITS_PER_WIDE_INT;
@@ -177,6 +200,7 @@ APInt getAPIntValue(const_tree exp, unsigned Bitwidth) {
         integerPart((unsigned HOST_WIDE_INT) val.low) +
         (integerPart((unsigned HOST_WIDE_INT) val.high) << ShiftAmt);
     DefaultValue = APInt(DefaultWidth, Part);
+#endif
   }
 
   if (!Bitwidth || Bitwidth == DefaultWidth)
@@ -203,7 +227,7 @@ bool isInt64(const_tree t, bool Unsigned) {
   if (!t)
     return false;
   if (HOST_BITS_PER_WIDE_INT == 64)
-#if (GCC_MINOR <= 8)     /* Condition added by Arun */
+#if (GCC_MINOR <= 8 && GCC_MAJOR == 4)     /* Condition added by Arun */
     return host_integerp(t, Unsigned) && !TREE_OVERFLOW(t);
 //Below lines added by Arun
 #else
@@ -215,6 +239,10 @@ bool isInt64(const_tree t, bool Unsigned) {
   }
 #endif
 //End of lines added by Arun
+#if (GCC_MAJOR == 5)
+  assert("Only 64-bit hosts supported!");
+  return false;
+#else
   assert(HOST_BITS_PER_WIDE_INT == 32 &&
          "Only 32- and 64-bit hosts supported!");
   return (isa<INTEGER_CST>(t) && !TREE_OVERFLOW(t)) &&
@@ -223,6 +251,7 @@ bool isInt64(const_tree t, bool Unsigned) {
           // that the value is non-negative.  If the constant is unsigned and
           // we want a signed result, check it fits in 63 bits.
           (HOST_WIDE_INT) TREE_INT_CST_HIGH(t) >= 0);
+#endif
 }
 
 /// getInt64 - Extract the value of an INTEGER_CST as a 64 bit integer.  If
@@ -236,10 +265,15 @@ uint64_t getInt64(const_tree t, bool Unsigned) {
   if (HOST_BITS_PER_WIDE_INT == 64) {
     return (uint64_t) LO;
   } else {
+#if (GCC_MAJOR == 5)
+    assert("Only 64-bit hosts supported!");
+    return 0;
+#else
     assert(HOST_BITS_PER_WIDE_INT == 32 &&
            "Only 32- and 64-bit hosts supported!");
     unsigned HOST_WIDE_INT HI = (unsigned HOST_WIDE_INT) TREE_INT_CST_HIGH(t);
     return ((uint64_t) HI << 32) | (uint64_t) LO;
+#endif
   }
 }
 

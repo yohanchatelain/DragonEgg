@@ -39,7 +39,19 @@ extern "C" {
 // Stop GCC declaring 'getopt' as it can clash with the system's declaration.
 #undef HAVE_DECL_GETOPT
 #include "system.h"
+#if (GCC_MAJOR == 5)
+#include "symtab.h"
+#endif
 #include "coretypes.h"
+#if (GCC_MAJOR == 5)
+#include "hash-set.h"
+#include "vec.h"
+#include "input.h"
+#include "alias.h"
+#include "inchash.h"  
+#include "double-int.h"
+#include "libiberty.h"
+#endif
 #include "tm.h"
 #include "tree.h"
 
@@ -198,7 +210,12 @@ static StringRef getLinkageName(tree Node) {
   tree decl_name = DECL_NAME(Node);
   if (decl_name != NULL && IDENTIFIER_POINTER(decl_name) != NULL) {
     if (TREE_PUBLIC(Node) && DECL_ASSEMBLER_NAME(Node) != DECL_NAME(Node) &&
-        !DECL_ABSTRACT(Node)) {
+#if (GCC_MAJOR == 5)
+        !DECL_ABSTRACT_P(Node)
+#else
+        !DECL_ABSTRACT(Node)
+#endif
+) {
       return StringRef(IDENTIFIER_POINTER(DECL_ASSEMBLER_NAME(Node)));
     }
   }
@@ -244,6 +261,9 @@ void DebugInfo::EmitFunctionStart(tree FnDecl, Function *Fn) {
     DISubprogram SP = CreateSubprogramDefinition(SPDecl, lineno, Fn);
     // Below line commented by Tarun in attempt to compile using llvm-3.6
     // SPDecl->replaceAllUsesWith(SP);
+#if (GCC_MAJOR == 5)  // NOTE this might be a llvm thing in which case the #if is incorrect
+    SPDecl.replaceAllUsesWith(SP);
+#endif
 
     // Push function on region stack.
 // Below two lines commented by Arun in attempt to compile using llvm-3.6
@@ -274,6 +294,9 @@ void DebugInfo::EmitFunctionStart(tree FnDecl, Function *Fn) {
     DISubprogram SP = CreateSubprogramDefinition(SPDecl, lineno, Fn);
     // Below line commented by Tarun in attempt to compile using llvm-3.6
     // SPDecl->replaceAllUsesWith(SP);
+#if (GCC_MAJOR == 5)  // NOTE this might be a llvm thing in which case the #if is incorrect
+    SPDecl.replaceAllUsesWith(SP);
+#endif
 
     // Push function on region stack.
 // Below two lines commented by Arun in attempt to compile using llvm-3.6
@@ -294,7 +317,7 @@ void DebugInfo::EmitFunctionStart(tree FnDecl, Function *Fn) {
   DIType ContainingType;
   if (DECL_VINDEX(FnDecl) && DECL_CONTEXT(FnDecl) &&
       isa<TYPE>((DECL_CONTEXT(FnDecl)))) { // Workaround GCC PR42653
-#if (GCC_MINOR <= 8)    /* Condition added by Arun */
+#if (GCC_MINOR <= 8 && GCC_MAJOR == 4)    /* Condition added by Arun */
     if (host_integerp(DECL_VINDEX(FnDecl), 0))
       VIndex = tree_low_cst(DECL_VINDEX(FnDecl), 0);
 //Below lines added by Arun
@@ -529,7 +552,11 @@ DIType DebugInfo::createMethodType(tree type) {
     findRegion(TYPE_CONTEXT(type)), getOrCreateFile(main_input_filename),
     0, 0, 0, 0);
   llvm::MDNode *FTN = FwdType;
+#if (GCC_MAJOR == 5)  // NOTE this might be a llvm thing in which case the #if is incorrect
+  llvm::TrackingMDRef FwdTypeNode(FTN);
+#else
   llvm::TrackingMDNodeRef FwdTypeNode(FTN);
+#endif
 // Below line commented by Arun in attempt to compile using llvm-3.6
 //  TypeCache[type] = WeakVH(FwdType);
 // Below line added by Arun in attempt to compile using llvm-3.6
@@ -585,6 +612,8 @@ DIType DebugInfo::createMethodType(tree type) {
   // old decl with the new one.  This will recursively update the debug info.
   // Below line commented by Tarun in attempt to compile using llvm-3.6
   // llvm::DIType(FwdTypeNode).replaceAllUsesWith(RealType);
+  // Below line added by Arun based on what was in testing-gcc-5.1-llvm-3.6.1
+  llvm::DIType(cast<MDNode>(FwdTypeNode)).replaceAllUsesWith(RealType);
 
   return RealType;
 }
@@ -759,7 +788,11 @@ DIType DebugInfo::createStructType(tree type) {
 
   // Insert into the TypeCache so that recursive uses will find it.
   llvm::MDNode *FDN = FwdDecl;
+#if (GCC_MAJOR == 5)  // NOTE this might be a llvm thing in which case the #if is incorrect
+  llvm::TrackingMDRef FwdDeclNode(FDN);
+#else
   llvm::TrackingMDNodeRef FwdDeclNode(FDN);
+#endif
 // Below line commented by Arun in attempt to compile using llvm-3.6
 //  TypeCache[type] = WeakVH(FwdDecl);
 // Below line commented by Arun in attempt to compile using llvm-3.6
@@ -876,7 +909,7 @@ DIType DebugInfo::createStructType(tree type) {
       unsigned VIndex = 0;
       DIType ContainingType;
       if (DECL_VINDEX(Member)) {
-#if (GCC_MINOR <= 8)     /* Condition added by Arun */
+#if (GCC_MINOR <= 8 && GCC_MAJOR == 4)     /* Condition added by Arun */
         if (host_integerp(DECL_VINDEX(Member), 0))
           VIndex = tree_low_cst(DECL_VINDEX(Member), 0);
 //Below lines added by Arun
@@ -930,6 +963,8 @@ DIType DebugInfo::createStructType(tree type) {
   // old decl with the new one.  This will recursively update the debug info.
   // Below line commented by Tarun in attempt to compile using llvm-3.6
   // llvm::DIType(FwdDeclNode).replaceAllUsesWith(RealDecl);
+  // Below line added by Arun based on what was in testing-gcc-5.1-llvm-3.6.1
+  llvm::DIType(cast<MDNode>(FwdDeclNode)).replaceAllUsesWith(RealDecl);
 
   return RealDecl;
 }
@@ -1023,7 +1058,7 @@ DIType DebugInfo::getOrCreateType(tree type) {
   default:
     llvm_unreachable("Unsupported type");
 
-#if (GCC_MINOR > 5)
+#if ((GCC_MINOR > 5 && GCC_MAJOR == 4) || GCC_MAJOR == 5)
   case NULLPTR_TYPE:
 #endif
   case LANG_TYPE: {

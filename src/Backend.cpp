@@ -68,7 +68,19 @@ extern "C" {
 // Stop GCC declaring 'getopt' as it can clash with the system's declaration.
 #undef HAVE_DECL_GETOPT
 #include "system.h"
+#if GCC_MAJOR == 5
+#include "symtab.h"
+#endif
 #include "coretypes.h"
+#if GCC_MAJOR == 5
+#include "options.h"
+#include "vec.h"
+#include "hash-set.h"
+#include "input.h"
+#include "alias.h"
+#include "double-int.h"
+#include "inchash.h"
+#endif
 #include "tm.h"
 #include "tree.h"
 
@@ -86,7 +98,7 @@ extern "C" {
 #include "target.h" // For targetm.
 #include "toplev.h"
 //Below condition added by Arun in attempt to compile using gcc-4.9
-#if (GCC_MINOR <= 8)
+#if (GCC_MINOR <= 8 && GCC_MAJOR == 4)
 //End of lines added by Arun
 #include "tree-flow.h"
 //Next few lines (includes) added by Arun in attempt to compile using gcc-4.9
@@ -131,7 +143,7 @@ tree default_mangle_decl_assembler_name(tree, tree);
 // Trees header.
 #include "dragonegg/Trees.h"
 
-#if (GCC_MAJOR != 4)
+#if (GCC_MAJOR < 4)
 #error Unsupported GCC major version
 #endif
 
@@ -142,7 +154,7 @@ int flag_no_simplify_libcalls;
 
 // Whether -fno-builtin was specified.
 // In GCC < 4.6, this variable is only defined in C family front ends.
-#if (GCC_MINOR < 6)
+#if (GCC_MINOR < 6 && GCC_MAJOR == 4)
 extern int flag_no_builtin __attribute__((weak));
 #endif
 
@@ -192,7 +204,7 @@ static void createPerFunctionOptimizationPasses();
 static void createPerModuleOptimizationPasses();
 
 // Compatibility hacks for older versions of GCC.
-#if (GCC_MINOR < 8)
+#if (GCC_MINOR < 8 && GCC_MAJOR == 4)
 
 static struct cgraph_node *cgraph_symbol(struct cgraph_node *N) { return N; }
 static struct varpool_node *varpool_symbol(struct varpool_node *N) { return N; }
@@ -214,7 +226,7 @@ static struct varpool_node *varpool_symbol(struct varpool_node *N) { return N; }
 #else
 
 //Below condition added by Arun in attempt to compile with gcc 4.9
-#if (GCC_MINOR == 8)
+#if (GCC_MINOR == 8 && GCC_MAJOR == 4)
 //End of lines added by Arun
 static symtab_node_base *cgraph_symbol(cgraph_node *N) { return &N->symbol; }
 static symtab_node_base *varpool_symbol(varpool_node *N) { return &N->symbol; }
@@ -223,7 +235,7 @@ static symtab_node_base *varpool_symbol(varpool_node *N) { return &N->symbol; }
 //End of lines added by Arun
 
 //Below lines added by Arun
-#if (GCC_MINOR == 9)
+#if ((GCC_MINOR == 9 && GCC_MAJOR == 4) || GCC_MAJOR == 5)
 static symtab_node *cgraph_symbol(cgraph_node *N) { return N; }
 static symtab_node *varpool_symbol(varpool_node *N) { return N; }
 #endif
@@ -557,7 +569,7 @@ static void CreateTargetMachine(const std::string &TargetTriple) {
   Options.NoNaNsFPMath = flag_finite_math_only;
   Options.NoZerosInBSS = !flag_zero_initialized_in_bss;
   Options.UnsafeFPMath =
-#if (GCC_MINOR > 5)
+#if ((GCC_MINOR > 5 && GCC_MAJOR == 4) || GCC_MAJOR == 5)
       fast_math_flags_set_p(&global_options);
 #else
   fast_math_flags_set_p();
@@ -587,7 +599,7 @@ static void CreateTargetMachine(const std::string &TargetTriple) {
 /// output_ident - Insert a .ident directive that identifies the plugin.
 static void output_ident(const char *ident_str) {
   const char *ident_asm_op = "\t.ident\t";
-#if (GCC_MINOR < 8)
+#if (GCC_MINOR < 8 && GCC_MAJOR == 4)
 #ifdef IDENT_ASM_OP
   ident_asm_op = IDENT_ASM_OP;
 #endif
@@ -607,7 +619,7 @@ static void CreateModule(const std::string &TargetTriple) {
   StringRef ModuleID = main_input_filename ? main_input_filename : "";
   TheModule = new Module(ModuleID, getGlobalContext());
 
-#if (GCC_MINOR < 8)
+#if (GCC_MINOR < 8 && GCC_MAJOR == 4)
 #ifdef IDENT_ASM_OP
   if (!flag_no_ident) {
     std::string IdentString;
@@ -991,9 +1003,21 @@ static void emit_alias(tree decl, tree target) {
     target = TREE_CHAIN(target);
 
   if (isa<IDENTIFIER_NODE>(target)) {
-    if (struct cgraph_node *fnode = cgraph_node_for_asm(target))
+    if (struct cgraph_node *fnode = 
+#if (GCC_MAJOR == 5)
+cgraph_node::get_for_asmname(target)
+#else
+cgraph_node_for_asm(target)
+#endif
+)
       target = cgraph_symbol(fnode)->decl;
-    else if (struct varpool_node *vnode = varpool_node_for_asm(target))
+    else if (struct varpool_node *vnode = 
+#if (GCC_MAJOR == 5)
+varpool_node::get_for_asmname(target)
+#else
+varpool_node_for_asm(target)
+#endif
+)
       target = varpool_symbol(vnode)->decl;
   }
 
@@ -1057,31 +1081,42 @@ static void emit_alias(tree decl, tree target) {
 /// emit_varpool_aliases - Output any aliases associated with the given varpool
 /// node.
 static void emit_varpool_aliases(struct varpool_node *node) {
-#if (GCC_MINOR < 7)
+#if (GCC_MINOR < 7 && GCC_MAJOR == 4)
   for (struct varpool_node *alias = node->extra_name; alias;
        alias = alias->next)
     emit_alias(alias->decl, node->decl);
 #else
   struct ipa_ref *ref;
   for (int i = 0;
+#if (GCC_MAJOR == 5)
+       (&varpool_symbol(node)->ref_list)->referring.iterate((i), (&ref));
+#else
        ipa_ref_list_referring_iterate(&varpool_symbol(node)->ref_list, i, ref);
+#endif
        i++) {
     if (ref->use != IPA_REF_ALIAS)
       continue;
 //Below condition added by Arun
-#if (GCC_MINOR <= 8)
+#if (GCC_MAJOR == 5)
+    varpool_node *alias = as_a<varpool_node*>(ref->referring);
+#else
+#if (GCC_MINOR <= 8 && GCC_MAJOR == 4)
 //End of lines added by Arun
     struct varpool_node *alias = ipa_ref_referring_varpool_node(ref);
 //Below lines added by Arun
 #else
 	varpool_node *alias = ipa_ref_referring_varpool_node(ref);
 #endif
+#endif   /* GCC_MAJOR == 5 */
 //End of lines added by Arun
     if (lookup_attribute("weakref",
                          DECL_ATTRIBUTES(varpool_symbol(alias)->decl)))
       continue;
 //Below condition added by Arun
-#if (GCC_MINOR <= 8)
+#if (GCC_MAJOR == 5)
+    emit_alias(varpool_symbol(alias)->decl, alias->get_alias_target()->decl);
+#else
+#if (GCC_MINOR <= 8 && GCC_MAJOR == 4)
 //End of lines added by Arun
     emit_alias(varpool_symbol(alias)->decl, alias->alias_of);
 //Below lines added by Arun
@@ -1089,10 +1124,11 @@ static void emit_varpool_aliases(struct varpool_node *node) {
     emit_alias(varpool_symbol(alias)->decl, varpool_alias_target(alias)->decl);
     //    emit_alias(varpool_symbol(alias)->decl, alias->alias_target);
 #endif
+#endif   /* GCC_MAJOR == 5 */
 //End of lines added by Arun
     emit_varpool_aliases(alias);
   }
-#endif
+#endif   /* (GCC_MINOR < 7 && GCC_MAJOR == 4) */
 }
 
 /// emit_global - Emit the specified VAR_DECL or aggregate CONST_DECL to LLVM as
@@ -1206,7 +1242,11 @@ static void emit_global(tree decl) {
   // Set the section for the global.
   if (isa<VAR_DECL>(decl)) {
     if (DECL_SECTION_NAME(decl)) {
+#if (GCC_MAJOR == 5)
+      GV->setSection(DECL_SECTION_NAME(decl));
+#else
       GV->setSection(TREE_STRING_POINTER(DECL_SECTION_NAME(decl)));
+#endif
 #ifdef LLVM_IMPLICIT_TARGET_GLOBAL_VAR_SECTION
     } else if (const char *Section =
                    LLVM_IMPLICIT_TARGET_GLOBAL_VAR_SECTION(decl)) {
@@ -1263,18 +1303,22 @@ static void emit_global(tree decl) {
   assert(SizeOfGlobalMatchesDecl(GV, decl) && "Global has wrong size!");
 
   // Mark the global as written so gcc doesn't waste time outputting it.
-#if (GCC_MINOR < 8)
+#if (GCC_MINOR < 8 && GCC_MAJOR == 4)
   TREE_ASM_WRITTEN(decl) = 1;
 #endif
 
   // Output any associated aliases.
   if (isa<VAR_DECL>(decl))
     if (struct varpool_node *vnode =
-#if (GCC_MINOR < 6)
+#if (GCC_MAJOR == 5)
+        varpool_node::get(decl)
+#else
+#if (GCC_MINOR < 6 && GCC_MAJOR == 4)
             varpool_node(decl)
 #else
         varpool_get_node(decl)
 #endif
+#endif   /* GCC_MAJOR == 5 */
         )
       emit_varpool_aliases(vnode);
 
@@ -1378,7 +1422,13 @@ Value *make_decl_llvm(tree decl) {
 
   // Specifying a section attribute on a variable forces it into a
   // non-.bss section, and thus it cannot be common.
-  if (isa<VAR_DECL>(decl) && DECL_SECTION_NAME(decl) != NULL_TREE &&
+  if (isa<VAR_DECL>(decl) && DECL_SECTION_NAME(decl) !=
+#if (GCC_MAJOR == 5)
+ NULL
+#else
+ NULL_TREE
+#endif
+ &&
       DECL_INITIAL(decl) == NULL_TREE && DECL_COMMON(decl))
     DECL_COMMON(decl) = 0;
 
@@ -1676,7 +1726,7 @@ static void llvm_start_unit(void */*gcc_data*/, void */*user_data*/) {
   EmitIR |= flag_generate_lto != 0;
   // We have the same needs as GCC's LTO.  Always claim to be doing LTO.
   flag_lto =
-#if (GCC_MINOR > 5)
+#if ((GCC_MINOR > 5 && GCC_MAJOR == 4) || GCC_MAJOR == 5)
       "";
 #else
   1;
@@ -1699,7 +1749,7 @@ static void llvm_start_unit(void */*gcc_data*/, void */*user_data*/) {
   // LLVM codegen takes care of this, and we don't want them decorated twice.
   targetm.mangle_decl_assembler_name = default_mangle_decl_assembler_name;
 
-#if (GCC_MINOR > 7)
+#if ((GCC_MINOR > 7 && GCC_MAJOR == 4) || GCC_MAJOR == 5)
   // Arrange for a special .ident directive identifying the compiler and plugin
   // versions to be inserted into the final assembler.
   targetm.asm_out.output_ident = output_ident;
@@ -1709,7 +1759,7 @@ static void llvm_start_unit(void */*gcc_data*/, void */*user_data*/) {
 /// emit_cgraph_aliases - Output any aliases associated with the given cgraph
 /// node.
 static void emit_cgraph_aliases(struct cgraph_node *node) {
-#if (GCC_MINOR < 7)
+#if (GCC_MINOR < 7 && GCC_MAJOR == 4)
   struct cgraph_node *alias, *next;
   for (alias = node->same_body; alias && alias->next; alias = alias->next)
     ;
@@ -1724,23 +1774,34 @@ static void emit_cgraph_aliases(struct cgraph_node *node) {
   // thunk function is output.
   struct ipa_ref *ref;
   for (int i = 0;
+#if (GCC_MAJOR == 5)
+       (&cgraph_symbol(node)->ref_list)->referring.iterate(i, &ref);
+#else
        ipa_ref_list_referring_iterate(&cgraph_symbol(node)->ref_list, i, ref);
+#endif
        i++) {
     if (ref->use != IPA_REF_ALIAS)
       continue;
+#if (GCC_MAJOR == 5)
+    struct cgraph_node *alias = as_a<cgraph_node*>(ref->referring);
+#else
     struct cgraph_node *alias = ipa_ref_referring_node(ref);
+#endif
     if (lookup_attribute("weakref",
                          DECL_ATTRIBUTES(cgraph_symbol(alias)->decl)))
       continue;
 
+#if (GCC_MINOR <= 8 && GCC_MAJOR == 4)
 // Below line commented by Arun as a fix for some checks segfaulting
-//    emit_alias(cgraph_symbol(alias)->decl, alias->thunk.alias);
+    emit_alias(cgraph_symbol(alias)->decl, alias->thunk.alias);
 // Below line added by Arun as a fix for some checks segfaulting
+#else
     emit_alias(cgraph_symbol(alias)->decl, node->decl);
+#endif
 
     emit_cgraph_aliases(alias);
   }
-#endif
+#endif   /* (GCC_MINOR < 7 && GCC_MAJOR == 4) */
 }
 
 /// emit_current_function - Turn the current gimple function into LLVM IR.  This
@@ -1757,7 +1818,11 @@ static void emit_current_function() {
   }
 
   // Output any associated aliases.
+#if (GCC_MAJOR == 5)
+  emit_cgraph_aliases(cgraph_node::get(current_function_decl));
+#else
   emit_cgraph_aliases(cgraph_get_node(current_function_decl));
+#endif
 
   if (!errorcount && !sorrycount) { // Do not process broken code.
     createPerFunctionOptimizationPasses();
@@ -1771,7 +1836,7 @@ static void emit_current_function() {
 }
 
 //Condition added by Arun
-#if (GCC_MINOR <= 8)
+#if (GCC_MINOR <= 8 && GCC_MAJOR == 4)
 //End of lines added by Arun
 
 /// rtl_emit_function - Turn a gimple function into LLVM IR.  This is called
@@ -1818,19 +1883,26 @@ static struct rtl_opt_pass pass_rtl_emit_function = { {
 } };
 
 //Lines added by Arun in attempting to compile with gcc 4.9
-#else                                    /* #if (GCC_MINOR<=8) */
+#else                        /* #if (GCC_MINOR<=8 && GCC_MAJOR == 4) */
 
-#if (GCC_MINOR == 9)
+#if ((GCC_MINOR == 9 && GC_MAJOR == 4) || GCC_MAJOR == 5)
 static struct pass_data pass_data_rtl_emit_function = {
   RTL_PASS, "rtl_emit_function",         /* name */
   OPTGROUP_NONE,                         /* optinfo_flags */
+#if (GCC_MINOR == 9 && GCC_MAJOR == 4)
   false,                                 /* has_gate */
   true,                                  /* has_execute */
+#endif
   TV_NONE,                               /* tv_id */
   PROP_ssa | PROP_gimple_leh | PROP_cfg, /* properties_required */
   0,                                     /* properties_provided */
   PROP_ssa | PROP_trees,                 /* properties_destroyed */
+#if (GCC_MINOR == 9 && GCC_MAJOR == 4)
   TODO_verify_ssa | TODO_verify_flow | TODO_verify_stmts
+#else
+  TODO_verify_all,
+  0
+#endif
 };
 
 class pass_rtl_emit_function : public rtl_opt_pass
@@ -1840,7 +1912,11 @@ public:
     : rtl_opt_pass (pass_data_rtl_emit_function, ctxt)
   {}
 
-  unsigned int execute () {
+  unsigned int execute (
+#if (GCC_MAJOR == 5)
+ function *
+#endif
+) {
     if (!errorcount && !sorrycount) {
       InitializeBackend();
       // Convert the function.
@@ -1848,7 +1924,7 @@ public:
     }
 
     // Free tree-ssa data structures.
-  #if (GCC_MINOR < 8)
+  #if (GCC_MINOR < 8 && GCC_MAJOR == 4)
     execute_free_datastructures();
   #else
     free_dominance_info(CDI_DOMINATORS);
@@ -1869,24 +1945,34 @@ rtl_opt_pass *make_pass_rtl_emit_function (gcc::context *ctxt) {
   return new pass_rtl_emit_function(ctxt);
 }
 //pass_rtl_emit_function pass_rtl_emit_function(g);
-#endif                                   /* #if (GCC_MINOR == 9) */
+#endif    /* #if ((GCC_MINOR == 9 && GC_MAJOR == 4) || GCC_MAJOR == 5) */
 
-#endif                                   /* #if (GCC_MINOR <= 8) */
+#endif    /* #if (GCC_MINOR <= 8 && GCC_MAJOR == 4) */
 //End of lines added by Arun
 
 /// emit_file_scope_asms - Output any file-scope assembly.
 static void emit_file_scope_asms() {
-  for (struct asm_node *anode = asm_nodes; anode; anode = anode->next) {
+  for (
+#if (GCC_MAJOR == 5)
+ struct asm_node *anode = symtab->first_asm_symbol()
+#else
+ struct asm_node *anode = asm_nodes
+#endif
+; anode; anode = anode->next) {
     tree string = anode->asm_str;
     if (isa<ADDR_EXPR>(string))
       string = TREE_OPERAND(string, 0);
     TheModule->appendModuleInlineAsm(TREE_STRING_POINTER(string));
   }
   // Remove the asms so gcc doesn't waste time outputting them.
+#if (GCC_MAJOR == 5)
+  symtab->clear_asm_symbols();
+#else
   asm_nodes = NULL;
+#endif
 }
 
-#if (GCC_MINOR > 6)
+#if ((GCC_MINOR > 6 && GCC_MAJOR == 4) || GCC_MAJOR == 5)
 /// get_alias_symbol - Return the name of the aliasee for this alias.
 static tree get_alias_symbol(tree decl) {
   tree alias = lookup_attribute("alias", DECL_ATTRIBUTES(decl));
@@ -1914,22 +2000,25 @@ static void emit_varpool_weakrefs() {
         lookup_attribute("weakref",
                          DECL_ATTRIBUTES(varpool_symbol(vnode)->decl)))
 //Below condition added by Arun
-#if (GCC_MINOR <= 8)
+#if (GCC_MINOR <= 8 && GCC_MAJOR == 4)
 //End of lines added by Arun
       emit_alias(varpool_symbol(vnode)->decl, vnode->alias_of ? vnode->alias_of
                  : get_alias_symbol(varpool_symbol(vnode)->decl));
 //Below lines added by Arun
 #else
-      // emit_alias(varpool_symbol(vnode)->decl, vnode->alias_target ? vnode->alias_target
-      //            : get_alias_symbol(varpool_symbol(vnode)->decl));
+#if (GCC_MAJOR == 5)
+       emit_alias(varpool_symbol(vnode)->decl, vnode->alias_target ? vnode->alias_target
+                  : get_alias_symbol(varpool_symbol(vnode)->decl));
+#else
   emit_alias(varpool_symbol(vnode)->decl, vnode->analyzed ? varpool_alias_target(vnode)->decl
              : get_alias_symbol(varpool_symbol(vnode)->decl));
+#endif
 #endif
 //End of lines added by Arun
 }
 #endif
 
-#if (GCC_MINOR < 8)
+#if (GCC_MINOR < 8 && GCC_MAJOR == 4)
 INSTANTIATE_VECTOR(alias_pair);
 #endif
 
@@ -1950,7 +2039,7 @@ static void llvm_emit_globals(void * /*gcc_data*/, void * /*user_data*/) {
   struct varpool_node *vnode;
   FOR_EACH_VARIABLE(vnode) {
     // If the node is explicitly marked as not being needed, then skip it.
-#if (GCC_MINOR < 8)
+#if (GCC_MINOR < 8 && GCC_MAJOR == 4)
     if (!vnode->needed)
       continue;
 #endif
@@ -1962,12 +2051,16 @@ static void llvm_emit_globals(void * /*gcc_data*/, void * /*user_data*/) {
     tree decl = varpool_symbol(vnode)->decl;
     if (vnode->analyzed &&
         (
-#if (GCC_MINOR > 5)
+#if (GCC_MINOR > 5 && GCC_MAJOR == 4)
             !varpool_can_remove_if_no_refs(vnode)
+#else
+#if (GCC_MAJOR == 5)
+            !vnode->can_remove_if_no_refs_p()
 #else
             vnode->force_output ||
             (!DECL_COMDAT(decl) &&
              (!DECL_ARTIFICIAL(decl) || vnode->externally_visible))
+#endif
 #endif
             ))
       // TODO: Remove the check on the following lines.  It only exists to avoid
@@ -1980,7 +2073,7 @@ static void llvm_emit_globals(void * /*gcc_data*/, void * /*user_data*/) {
         emit_global(decl);
   }
 
-#if (GCC_MINOR > 6)
+#if ((GCC_MINOR > 6 && GCC_MAJOR == 4) || GCC_MAJOR == 5)
   // Aliases of functions and global variables with bodies are output when the
   // body is.  Output any aliases (weak references) of globals without bodies,
   // i.e. external declarations, now.
@@ -2141,7 +2234,7 @@ static void llvm_finish(void */*gcc_data*/, void */*user_data*/) {
 }
 
 //Condition added by Arun
-#if (GCC_MINOR <= 8)
+#if (GCC_MINOR <= 8 && GCC_MAJOR == 4)
 //End of lines added by Arun
 
 /// gate_null - Gate method for a pass that does nothing.
@@ -2150,7 +2243,7 @@ static bool gate_null(void) { return false; }
 /// pass_gimple_null - Gimple pass that does nothing.
 static struct gimple_opt_pass pass_gimple_null = { {
   GIMPLE_PASS, "*gimple_null", /* name */
-#if (GCC_MINOR >= 8)
+#if (GCC_MINOR >= 8 && GCC_MAJOR == 4)
   OPTGROUP_NONE,               /* optinfo_flags */
 #endif
   gate_null,                   /* gate */
@@ -2168,12 +2261,14 @@ static struct gimple_opt_pass pass_gimple_null = { {
 
 //Lines added by Arun in attempting to compile with gcc 4.9
 #else                          /* #if (GCC_MINOR <= 8) */
-#if (GCC_MINOR == 9)
+#if ((GCC_MINOR == 9 && GCC_MAJOR == 4) || GCC_MAJOR == 5)
 static struct pass_data pass_data_gimple_null = {
   GIMPLE_PASS, "*gimple_null", /* name */
   OPTGROUP_NONE,               /* optinfo_flags */
+#if (GCC_MINOR == 9 && GCC_MAJOR == 4)
   true,                        /* has_gate */
   false,                       /* has_execute */
+#endif
   TV_NONE,                     /* tv_id */
   0,                           /* properties_required */
   0,                           /* properties_provided */
@@ -2189,7 +2284,11 @@ public:
     : gimple_opt_pass (pass_data_gimple_null, ctxt)
   {}
 
-  bool gate () { return false; }
+  bool gate (
+#if (GCC_MAJOR == 5)
+ function *
+#endif
+) { return false; }
   opt_pass* clone() { return new pass_gimple_null(g); }
 };
 
@@ -2197,13 +2296,13 @@ gimple_opt_pass *make_pass_gimple_null (gcc::context *ctxt) {
   return new pass_gimple_null(ctxt);
 }
 //pass_gimple_null pass_gimple_null(g);
-#endif                         /* #if (GCC_MINOR == 9) */
+#endif       /* #if ((GCC_MINOR == 9 && GCC_MAJOR == 4) || GCC_MAJOR == 5) */
 
-#endif                         /* #if (GCC_MINOR <= 8) */
+#endif       /* #if (GCC_MINOR <= 8 && GCC_MAJOR == 4) */
 //End of lines added by Arun
 
 //Condition added by Arun
-#if (GCC_MINOR <= 8)
+#if (GCC_MINOR <= 8 && GCC_MAJOR == 4)
 //End of lines added by Arun
 
 /// execute_correct_state - Correct the cgraph state to ensure that newly
@@ -2221,7 +2320,7 @@ static bool gate_correct_state(void) { return true; }
 /// newly inserted functions are processed before being converted to LLVM IR.
 static struct gimple_opt_pass pass_gimple_correct_state = { {
   GIMPLE_PASS, "*gimple_correct_state", /* name */
-#if (GCC_MINOR >= 8)
+#if (GCC_MINOR >= 8 && GCC_MAJOR == 4)
   OPTGROUP_NONE,                        /* optinfo_flags */
 #endif
   gate_correct_state,                   /* gate */
@@ -2238,13 +2337,15 @@ static struct gimple_opt_pass pass_gimple_correct_state = { {
 } };
 
 //Lines added by Arun in attempting to compile with gcc 4.9
-#else                          /* #if (GCC_MINOR <= 8) */
-#if (GCC_MINOR == 9)
+#else                          /* #if (GCC_MINOR <= 8 && GCC_MAJOR == 4) */
+#if ((GCC_MINOR == 9 && GCC_MAJOR == 4) || GCC_MAJOR == 5)
 static struct pass_data pass_data_gimple_correct_state = {
   GIMPLE_PASS, "*gimple_correct_state", /* name */
   OPTGROUP_NONE,                        /* optinfo_flags */
+#if (GCC_MINOR == 9 && GCC_MAJOR == 4)
   true,                                 /* has_gate */
   true,                                 /* has_execute */
+#endif
   TV_NONE,                              /* tv_id */
   0,                                    /* properties_required */
   0,                                    /* properties_provided */
@@ -2260,11 +2361,24 @@ public:
     : gimple_opt_pass (pass_data_gimple_correct_state, ctxt)
   {}
 
-  bool gate () { return true; }
+  bool gate (
+#if (GCC_MAJOR == 5)
+ function *
+#endif
+) { return true; }
 
-  unsigned int execute () {
+  unsigned int execute (
+#if (GCC_MAJOR == 5)
+ function *
+#endif
+) {
+#if (GCC_MAJOR == 5)
+    if (symtab->state < symtab_state::IPA_SSA)
+      symtab->state = symtab_state::IPA_SSA;
+#else
     if (cgraph_state < CGRAPH_STATE_IPA_SSA)
       cgraph_state = CGRAPH_STATE_IPA_SSA;
+#endif
     return 0;
   }
 
@@ -2275,19 +2389,19 @@ gimple_opt_pass *make_pass_gimple_correct_state (gcc::context *ctxt) {
   return new pass_gimple_correct_state(ctxt);
 }
 //pass_gimple_correct_state pass_gimple_correct_state(g);
-#endif                         /* #if (GCC_MINOR == 9) */
+#endif       /* #if ((GCC_MINOR == 9 && GCC_MAJOR == 4) || GCC_MAJOR == 5) */
 
-#endif                         /* #if (GCC_MINOR <= 8) */
+#endif       /* #if (GCC_MINOR <= 8 && GCC_MAJOR == 4) */
 //End of lines added by Arun
 
 //Condition added by Arun
-#if (GCC_MINOR <= 8)
+#if (GCC_MINOR <= 8 && GCC_MAJOR == 4)
 //End of lines added by Arun
 
 /// pass_ipa_null - IPA pass that does nothing.
 static struct ipa_opt_pass_d pass_ipa_null = {
   { IPA_PASS, "*ipa_null", /* name */
-#if (GCC_MINOR >= 8)
+#if (GCC_MINOR >= 8 && GCC_MAJOR == 4)
     OPTGROUP_NONE,         /* optinfo_flags */
 #endif
     gate_null,             /* gate */
@@ -2318,13 +2432,15 @@ static struct ipa_opt_pass_d pass_ipa_null = {
 };
 
 //Lines added by Arun in attempting to compile with gcc 4.9
-#else                          /* #if (GCC_MINOR <= 8) */
-#if (GCC_MINOR == 9)
+#else
+#if ((GCC_MINOR == 9 && GCC_MAJOR == 4) || GCC_MAJOR == 5)
 static struct pass_data pass_data_ipa_null = {
   IPA_PASS, "*ipa_null",       /* name */
   OPTGROUP_NONE,               /* optinfo_flags */
+#if (GCC_MINOR == 9 && GCC_MAJOR == 4)
   true,                        /* has_gate */
   false,                       /* has_execute */
+#endif
   TV_NONE,                     /* tv_id */
   0,                           /* properties_required */
   0,                           /* properties_provided */
@@ -2350,7 +2466,11 @@ public:
                      )
   {}
 
-  bool gate () { return false; }
+  bool gate (
+#if (GCC_MAJOR == 5)
+ function *
+#endif
+) { return false; }
   opt_pass* clone() { return new pass_ipa_null(g); }
 };
 
@@ -2358,18 +2478,18 @@ ipa_opt_pass_d *make_pass_ipa_null (gcc::context *ctxt) {
   return new pass_ipa_null(ctxt);
 }
 //pass_ipa_null pass_ipa_null(g);
-#endif                         /* #if (GCC_MINOR == 9) */
+#endif      /* #if ((GCC_MINOR == 9 && GCC_MAJOR == 4) || GCC_MAJOR == 5) */
 
-#endif                         /* #if (GCC_MINOR <= 8) */
+#endif      /* #if (GCC_MINOR <= 8 && GCC_MAJOR == 4) */
 //End of lines added by Arun
 
 //Condition added by Arun
-#if (GCC_MINOR <= 8)
+#if (GCC_MINOR <= 8 && GCC_MAJOR == 4)
 //End of lines added by Arun
 
 /// pass_rtl_null - RTL pass that does nothing.
 static struct rtl_opt_pass pass_rtl_null = { { RTL_PASS, "*rtl_null", /* name */
-#if (GCC_MINOR >= 8)
+#if (GCC_MINOR >= 8 && GCC_MAJOR == 4)
                                                OPTGROUP_NONE,/* optinfo_flags */
 #endif
                                                gate_null,             /* gate */
@@ -2386,13 +2506,15 @@ static struct rtl_opt_pass pass_rtl_null = { { RTL_PASS, "*rtl_null", /* name */
 } };
 
 //Lines added by Arun in attempting to compile with gcc 4.9
-#else                          /* #if (GCC_MINOR <= 8) */
-#if (GCC_MINOR == 9)
+#else                          /* #if (GCC_MINOR <= 8 && GCC_MAJOR == 4) */
+#if ((GCC_MINOR == 9 && GCC_MAJOR == 4) || GCC_MAJOR == 5)
 static struct pass_data pass_data_rtl_null = {
   RTL_PASS, "*rtl_null",                /* name */
   OPTGROUP_NONE,                        /* optinfo_flags */
+#if (GCC_MINOR == 9 && GCC_MAJOR == 4)
   true,                                 /* has_gate */
   false,                                /* has_execute */
+#endif
   TV_NONE,                              /* tv_id */
   0,                                    /* properties_required */
   0,                                    /* properties_provided */
@@ -2408,7 +2530,11 @@ public:
     : rtl_opt_pass (pass_data_rtl_null, ctxt)
   {}
 
-  bool gate () { return false; }
+  bool gate (
+#if (GCC_MAJOR == 5)
+ function *
+#endif
+) { return false; }
   opt_pass* clone() { return new pass_rtl_null(g); }
 };
 
@@ -2416,19 +2542,19 @@ rtl_opt_pass *make_pass_rtl_null (gcc::context *ctxt) {
   return new pass_rtl_null(ctxt);
 }
 //pass_rtl_null pass_rtl_null(g);
-#endif                         /* #if (GCC_MINOR == 9) */
+#endif      /* #if ((GCC_MINOR == 9 && GCC_MAJOR == 4) || GCC_MAJOR == 5) */
 
-#endif                         /* #if (GCC_MINOR <= 8) */
+#endif      /* #if (GCC_MINOR <= 8 && GCC_MAJOR == 4) */
 //End of lines added by Arun
 
 //Condition added by Arun
-#if (GCC_MINOR <= 8)
+#if (GCC_MINOR <= 8 && GCC_MAJOR == 4)
 //End of lines added by Arun
 
 /// pass_simple_ipa_null - Simple IPA pass that does nothing.
 static struct simple_ipa_opt_pass pass_simple_ipa_null = { {
   SIMPLE_IPA_PASS, "*simple_ipa_null", /* name */
-#if (GCC_MINOR >= 8)
+#if (GCC_MINOR >= 8 && GCC_MAJOR == 4)
   OPTGROUP_NONE,                       /* optinfo_flags */
 #endif
   gate_null,                           /* gate */
@@ -2445,13 +2571,15 @@ static struct simple_ipa_opt_pass pass_simple_ipa_null = { {
 } };
 
 //Lines added by Arun in attempting to compile with gcc 4.9
-#else                          /* #if (GCC_MINOR <= 8) */
-#if (GCC_MINOR == 9)
+#else                          /* #if (GCC_MINOR <= 8 && GCC_MAJOR == 4) */
+#if ((GCC_MINOR == 9 && GCC_MAJOR == 4) || GCC_MAJOR == 5)
 static struct pass_data pass_data_simple_ipa_null = {
   SIMPLE_IPA_PASS, "*simple_ipa_null",  /* name */
   OPTGROUP_NONE,                        /* optinfo_flags */
+#if (GCC_MINOR == 9 && GCC_MAJOR == 4)
   true,                                 /* has_gate */
   false,                                /* has_execute */
+#endif
   TV_NONE,                              /* tv_id */
   0,                                    /* properties_required */
   0,                                    /* properties_provided */
@@ -2467,7 +2595,11 @@ public:
     : simple_ipa_opt_pass (pass_data_simple_ipa_null, ctxt)
   {}
 
-  bool gate () { return false; }
+  bool gate (
+#if (GCC_MAJOR == 5)
+ function *
+#endif
+) { return false; }
   opt_pass* clone() { return new pass_simple_ipa_null(g); }
 };
 
@@ -2475,9 +2607,9 @@ simple_ipa_opt_pass *make_pass_simple_ipa_null (gcc::context *ctxt) {
   return new pass_simple_ipa_null(ctxt);
 }
 //pass_simple_ipa_null pass_simple_ipa_null(g);
-#endif                         /* #if (GCC_MINOR == 9) */
+#endif       /* #if ((GCC_MINOR == 9 && GCC_MAJOR == 4) || GCC_MAJOR == 5) */
 
-#endif                         /* #if (GCC_MINOR <= 8) */
+#endif       /* #if (GCC_MINOR <= 8 && GCC_MAJOR == 4) */
 //End of lines added by Arun
 
 // Garbage collector roots.
@@ -2627,8 +2759,10 @@ int __attribute__((visibility("default"))) plugin_init(
   TakeoverAsmOutput();
 
   // Register our garbage collector roots.
+#if (GCC_MAJOR == 4)
   register_callback(plugin_name, PLUGIN_REGISTER_GGC_CACHES, NULL,
                     const_cast<ggc_cache_tab *>(gt_ggc_rc__gt_cache_h));
+#endif
 
   // Perform late initialization just before processing the compilation unit.
   register_callback(plugin_name, PLUGIN_START_UNIT, llvm_start_unit, NULL);
@@ -2643,7 +2777,7 @@ int __attribute__((visibility("default"))) plugin_init(
 
 // Leave pass_ipa_function_and_variable_visibility.  Needed for correctness.
 
-#if (GCC_MINOR < 6)
+#if (GCC_MINOR < 6 && GCC_MAJOR == 4)
     // Turn off pass_ipa_early_inline.
     pass_info.pass = &pass_simple_ipa_null.pass;
     pass_info.reference_pass_name = "einline_ipa";
@@ -2664,7 +2798,7 @@ int __attribute__((visibility("default"))) plugin_init(
 
     // Turn off pass_lower_vector.
 //Below condition added by Arun
-#if (GCC_MINOR < 9)
+#if (GCC_MINOR < 9 && GCC_MAJOR == 4)
 //End of lines added by Arun
     pass_info.pass = &pass_gimple_null.pass;
 //Below lines added by Arun
@@ -2692,7 +2826,7 @@ int __attribute__((visibility("default"))) plugin_init(
     // those generated by OMP expansion, are processed before being converted to
     // LLVM IR.
 //Below condition added by Arun
-#if (GCC_MINOR < 9)
+#if (GCC_MINOR < 9 && GCC_MAJOR == 4)
 //End of lines added by Arun
     pass_info.pass = &pass_gimple_correct_state.pass;
 //Below lines added by Arun
@@ -2708,7 +2842,7 @@ int __attribute__((visibility("default"))) plugin_init(
 
     // Turn off pass_early_local_passes::pass_all_early_optimizations.
 //Below condition added by Arun
-#if (GCC_MINOR < 9)
+#if (GCC_MINOR < 9 && GCC_MAJOR == 4)
 //End of lines added by Arun
     pass_info.pass = &pass_gimple_null.pass;
 //Below lines added by Arun
@@ -2733,7 +2867,7 @@ int __attribute__((visibility("default"))) plugin_init(
 
     // Turn off pass_ipa_increase_alignment.
 //Below condition added by Arun
-#if (GCC_MINOR < 9)
+#if (GCC_MINOR < 9 && GCC_MAJOR == 4)
 //End of lines added by Arun
     pass_info.pass = &pass_simple_ipa_null.pass;
 //Below lines added by Arun
@@ -2747,7 +2881,7 @@ int __attribute__((visibility("default"))) plugin_init(
     pass_info.pos_op = PASS_POS_REPLACE;
     register_callback(plugin_name, PLUGIN_PASS_MANAGER_SETUP, NULL, &pass_info);
 
-#if (GCC_MINOR < 8)
+#if (GCC_MINOR < 8 && GCC_MAJOR == 4)
     // Turn off pass_ipa_matrix_reorg.
     pass_info.pass = &pass_simple_ipa_null.pass;
     pass_info.reference_pass_name = "matrix-reorg";
@@ -2766,7 +2900,7 @@ int __attribute__((visibility("default"))) plugin_init(
 
     // Turn off pass_ipa_cp.
 //Below condition added by Arun
-#if (GCC_MINOR < 9)
+#if (GCC_MINOR < 9 && GCC_MAJOR == 4)
 //End of lines added by Arun
     pass_info.pass = &pass_ipa_null.pass;
 //Below lines added by Arun
@@ -2784,7 +2918,7 @@ int __attribute__((visibility("default"))) plugin_init(
 
     // Turn off pass_ipa_inline.
 //Below condition added by Arun
-#if (GCC_MINOR < 9)
+#if (GCC_MINOR < 9 && GCC_MAJOR == 4)
 //End of lines added by Arun
     pass_info.pass = &pass_ipa_null.pass;
 //Below lines added by Arun
@@ -2800,7 +2934,7 @@ int __attribute__((visibility("default"))) plugin_init(
 
     // Turn off pass_ipa_pure_const.
 //Below condition added by Arun
-#if (GCC_MINOR < 9)
+#if (GCC_MINOR < 9 && GCC_MAJOR == 4)
 //End of lines added by Arun
     pass_info.pass = &pass_ipa_null.pass;
 //Below lines added by Arun
@@ -2816,7 +2950,7 @@ int __attribute__((visibility("default"))) plugin_init(
 
     // Turn off pass_ipa_reference.
 //Below condition added by Arun
-#if (GCC_MINOR < 9)
+#if (GCC_MINOR < 9 && GCC_MAJOR == 4)
 //End of lines added by Arun
     pass_info.pass = &pass_ipa_null.pass;
 //Below lines added by Arun
@@ -2830,7 +2964,7 @@ int __attribute__((visibility("default"))) plugin_init(
     pass_info.pos_op = PASS_POS_REPLACE;
     register_callback(plugin_name, PLUGIN_PASS_MANAGER_SETUP, NULL, &pass_info);
 
-#if (GCC_MINOR < 7)
+#if (GCC_MINOR < 7 && GCC_MAJOR == 4)
     // Turn off pass_ipa_type_escape.
     pass_info.pass = &pass_simple_ipa_null.pass;
     pass_info.reference_pass_name = "type-escape-var";
@@ -2841,7 +2975,7 @@ int __attribute__((visibility("default"))) plugin_init(
 
     // Turn off pass_ipa_pta.
 //Below condition added by Arun
-#if (GCC_MINOR < 9)
+#if (GCC_MINOR < 9 && GCC_MAJOR == 4)
 //End of lines added by Arun
     pass_info.pass = &pass_simple_ipa_null.pass;
 //Below lines added by Arun
@@ -2855,7 +2989,7 @@ int __attribute__((visibility("default"))) plugin_init(
     pass_info.pos_op = PASS_POS_REPLACE;
     register_callback(plugin_name, PLUGIN_PASS_MANAGER_SETUP, NULL, &pass_info);
 
-#if (GCC_MINOR < 7)
+#if (GCC_MINOR < 7 && GCC_MAJOR == 4)
     // Turn off pass_ipa_struct_reorg.
     pass_info.pass = &pass_simple_ipa_null.pass;
     pass_info.reference_pass_name = "ipa_struct_reorg";
@@ -2864,10 +2998,10 @@ int __attribute__((visibility("default"))) plugin_init(
     register_callback(plugin_name, PLUGIN_PASS_MANAGER_SETUP, NULL, &pass_info);
 #endif
   }
-/* Commented by Arun in attempt to test something about passes removed by gcc
+#if (GCC_MINOR <=8 && GCC_MAJOR == 4)
   // Disable all LTO passes.
 //Below condition added by Arun
-#if (GCC_MINOR < 9)
+#if (GCC_MINOR < 9 && GCC_MAJOR == 4)
 //End of lines added by Arun
     pass_info.pass = &pass_ipa_null.pass;
 //Below lines added by Arun
@@ -2881,7 +3015,7 @@ int __attribute__((visibility("default"))) plugin_init(
   register_callback(plugin_name, PLUGIN_PASS_MANAGER_SETUP, NULL, &pass_info);
 
 //Below condition added by Arun
-#if (GCC_MINOR < 9)
+#if (GCC_MINOR < 9 && GCC_MAJOR == 4)
 //End of lines added by Arun
     pass_info.pass = &pass_ipa_null.pass;
 //Below lines added by Arun
@@ -2893,8 +3027,8 @@ int __attribute__((visibility("default"))) plugin_init(
   pass_info.ref_pass_instance_number = 0;
   pass_info.pos_op = PASS_POS_REPLACE;
   register_callback(plugin_name, PLUGIN_PASS_MANAGER_SETUP, NULL, &pass_info);
-*/
-#if (GCC_MINOR < 6)
+#endif
+#if (GCC_MINOR < 6 && GCC_MAJOR == 4)
   pass_info.pass = &pass_ipa_null.pass;
   pass_info.reference_pass_name = "lto_wpa_fixup";
   pass_info.ref_pass_instance_number = 0;
@@ -2912,7 +3046,7 @@ int __attribute__((visibility("default"))) plugin_init(
   if (!EnableGCCOptimizations) {
     // Disable pass_lower_eh_dispatch.
 //Below condition added by Arun
-#if (GCC_MINOR < 9)
+#if (GCC_MINOR < 9 && GCC_MAJOR == 4)
 //End of lines added by Arun
     pass_info.pass = &pass_gimple_null.pass;
 //Below lines added by Arun
@@ -2928,7 +3062,7 @@ int __attribute__((visibility("default"))) plugin_init(
 
     // Disable pass_all_optimizations.
 //Below condition added by Arun
-#if (GCC_MINOR < 9)
+#if (GCC_MINOR < 9 && GCC_MAJOR == 4)
 //End of lines added by Arun
     pass_info.pass = &pass_gimple_null.pass;
 //Below lines added by Arun
@@ -2946,7 +3080,7 @@ int __attribute__((visibility("default"))) plugin_init(
 
     // Disable pass_lower_complex_O0.
 //Below condition added by Arun
-#if (GCC_MINOR < 9)
+#if (GCC_MINOR < 9 && GCC_MAJOR == 4)
 //End of lines added by Arun
     pass_info.pass = &pass_gimple_null.pass;
 //Below lines added by Arun
@@ -2962,7 +3096,7 @@ int __attribute__((visibility("default"))) plugin_init(
 
     // Disable pass_cleanup_eh.
 //Below condition added by Arun
-#if (GCC_MINOR < 9)
+#if (GCC_MINOR < 9 && GCC_MAJOR == 4)
 //End of lines added by Arun
     pass_info.pass = &pass_gimple_null.pass;
 //Below lines added by Arun
@@ -2978,7 +3112,7 @@ int __attribute__((visibility("default"))) plugin_init(
 
     // Disable pass_lower_resx.
 //Below condition added by Arun
-#if (GCC_MINOR < 9)
+#if (GCC_MINOR < 9 && GCC_MAJOR == 4)
 //End of lines added by Arun
     pass_info.pass = &pass_gimple_null.pass;
 //Below lines added by Arun
@@ -2994,7 +3128,7 @@ int __attribute__((visibility("default"))) plugin_init(
 
     // Disable pass_nrv.
 //Below condition added by Arun
-#if (GCC_MINOR < 9)
+#if (GCC_MINOR < 9 && GCC_MAJOR == 4)
 //End of lines added by Arun
     pass_info.pass = &pass_gimple_null.pass;
 //Below lines added by Arun
@@ -3007,10 +3141,10 @@ int __attribute__((visibility("default"))) plugin_init(
     pass_info.ref_pass_instance_number = 0;
     pass_info.pos_op = PASS_POS_REPLACE;
     register_callback(plugin_name, PLUGIN_PASS_MANAGER_SETUP, NULL, &pass_info);
-/* Commented by Arun in attempt to test something about passes removed by gcc
+#if (GCC_MINOR <= 8 && GCC_MAJOR == 4)
     // Disable pass_mudflap_2. ???
 //Below condition added by Arun
-#if (GCC_MINOR < 9)
+#if (GCC_MINOR < 9 && GCC_MAJOR == 4)
 //End of lines added by Arun
     pass_info.pass = &pass_gimple_null.pass;
 //Below lines added by Arun
@@ -3022,10 +3156,10 @@ int __attribute__((visibility("default"))) plugin_init(
     pass_info.ref_pass_instance_number = 0;
     pass_info.pos_op = PASS_POS_REPLACE;
     register_callback(plugin_name, PLUGIN_PASS_MANAGER_SETUP, NULL, &pass_info);
-*/
+#endif
     // Disable pass_cleanup_cfg_post_optimizing.
 //Below condition added by Arun
-#if (GCC_MINOR < 9)
+#if (GCC_MINOR < 9 && GCC_MAJOR == 4)
 //End of lines added by Arun
     pass_info.pass = &pass_gimple_null.pass;
 //Below lines added by Arun
@@ -3044,7 +3178,7 @@ int __attribute__((visibility("default"))) plugin_init(
 
   // Replace rtl expansion with a pass that converts functions to LLVM IR.
 //Below condition added by Arun
-#if (GCC_MINOR < 9)
+#if (GCC_MINOR < 9 && GCC_MAJOR == 4)
 //End of lines added by Arun
   pass_info.pass = &pass_rtl_emit_function.pass;
 //Below lines added by Arun
@@ -3059,11 +3193,11 @@ int __attribute__((visibility("default"))) plugin_init(
   register_callback(plugin_name, PLUGIN_PASS_MANAGER_SETUP, NULL, &pass_info);
 
   // Turn off all other rtl passes.
-#if (GCC_MINOR < 8)
+#if (GCC_MINOR < 8 && GCC_MAJOR == 4)
   pass_info.pass = &pass_gimple_null.pass;
 #else
 //Below condition added by Arun
-#if (GCC_MINOR < 9)
+#if (GCC_MINOR < 9 && GCC_MAJOR == 4)
 //End of lines added by Arun
   pass_info.pass = &pass_rtl_null.pass;
 //Below lines added by Arun
@@ -3079,7 +3213,7 @@ int __attribute__((visibility("default"))) plugin_init(
   register_callback(plugin_name, PLUGIN_PASS_MANAGER_SETUP, NULL, &pass_info);
 
 //Below condition added by Arun
-#if (GCC_MINOR < 9)
+#if (GCC_MINOR < 9 && GCC_MAJOR == 4)
 //End of lines added by Arun
   pass_info.pass = &pass_rtl_null.pass;
 //Below lines added by Arun

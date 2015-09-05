@@ -23,7 +23,7 @@
 #ifndef DRAGONEGG_TREES_H
 #define DRAGONEGG_TREES_H
 
-#if (GCC_MINOR < 7)
+#if (GCC_MINOR < 7 && GCC_MAJOR == 4)
 #include "flags.h" // For TYPE_OVERFLOW_UNDEFINED.
 #endif
 
@@ -140,9 +140,9 @@ unsigned getFieldAlignment(const_tree field);
 
 /// isBitfield - Returns whether to treat the specified field as a bitfield.
 bool isBitfield(const_tree field_decl);
-
+#if GCC_MAJOR < 5
 // Compatibility hacks for older versions of GCC.
-#if (GCC_MINOR < 8)
+#if (GCC_MINOR < 8 && GCC_MAJOR == 4)
 // Supported allocation types:
 struct va_gc {
 }; // Allocation uses ggc_alloc.
@@ -165,5 +165,7 @@ template <typename T, typename A> class vec {
     }                                                                          \
   }
 #endif
+
+#endif    /* GCC_MAJOR < 5 */
 
 #endif /* DRAGONEGG_TREES_H */

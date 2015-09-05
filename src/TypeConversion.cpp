@@ -45,7 +45,19 @@ extern "C" {
 // Stop GCC declaring 'getopt' as it can clash with the system's declaration.
 #undef HAVE_DECL_GETOPT
 #include "system.h"
+#if (GCC_MAJOR == 5)
+#include "symtab.h"
+#endif
 #include "coretypes.h"
+#if (GCC_MAJOR == 5)
+#include "hash-set.h"
+#include "vec.h"
+#include "input.h"
+#include "alias.h"
+#include "inchash.h"  
+#include "double-int.h"
+#include "libiberty.h"
+#endif
 #include "tm.h"
 #include "tree.h"
 
@@ -55,7 +67,7 @@ extern "C" {
 #endif
 
 //Below lines added by Arun in attempt to compile using gcc-4.9
-#if (GCC_MINOR == 9)
+#if ((GCC_MINOR == 9 && GCC_MAJOR == 4) || GCC_MAJOR == 5)
 #include "print-tree.h"
 #include "calls.h"
 #endif
@@ -167,7 +179,7 @@ public:
     case ENUMERAL_TYPE:
     case FIXED_POINT_TYPE:
     case INTEGER_TYPE:
-#if (GCC_MINOR > 5)
+#if ((GCC_MINOR > 5 && GCC_MAJOR == 4) || GCC_MAJOR == 5)
     case NULLPTR_TYPE:
 #endif
     case OFFSET_TYPE:
@@ -222,7 +234,7 @@ public:
 uint64_t ArrayLengthOf(tree type) {
   assert(isa<ARRAY_TYPE>(type) && "Only for array types!");
   // Workaround for missing sanity checks in older versions of GCC.
-  if ((GCC_MINOR == 5 && GCC_MICRO < 3) || (GCC_MINOR == 6 && GCC_MICRO < 2))
+  if ((GCC_MINOR == 5 && GCC_MICRO < 3 && GCC_MAJOR == 4) || (GCC_MINOR == 6 && GCC_MICRO < 2 && GCC_MAJOR == 4))
     if (!TYPE_DOMAIN(type) || !TYPE_MAX_VALUE(TYPE_DOMAIN(type)))
       return NO_LENGTH;
   tree range = array_type_nelts(type); // The number of elements minus one.
@@ -463,7 +475,7 @@ Type *getRegType(tree type) {
     return StructType::get(EltTy, EltTy, NULL);
   }
 
-#if (GCC_MINOR > 5)
+#if ((GCC_MINOR > 5 && GCC_MAJOR == 4) || GCC_MAJOR == 5)
   case NULLPTR_TYPE:
     return GetUnitPointerType(Context, TYPE_ADDR_SPACE(type));
 #endif
@@ -1269,7 +1281,7 @@ static bool mayRecurse(tree type) {
   case ENUMERAL_TYPE:
   case FIXED_POINT_TYPE:
   case INTEGER_TYPE:
-#if (GCC_MINOR > 5)
+#if ((GCC_MINOR > 5 && GCC_MAJOR == 4) || GCC_MAJOR == 5)
   case NULLPTR_TYPE:
 #endif
   case OFFSET_TYPE:
@@ -1433,7 +1445,7 @@ static Type *ConvertTypeNonRecursive(tree type) {
     break;
   }
 
-#if (GCC_MINOR > 5)
+#if ((GCC_MINOR > 5 && GCC_MAJOR == 4) || GCC_MAJOR == 5)
   case NULLPTR_TYPE:
     Ty = GetUnitPointerType(Context, TYPE_ADDR_SPACE(type));
     break;

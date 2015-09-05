@@ -45,7 +45,19 @@ extern "C" {
 // Stop GCC declaring 'getopt' as it can clash with the system's declaration.
 #undef HAVE_DECL_GETOPT
 #include "system.h"
+#if GCC_MAJOR == 5
+#include "symtab.h"
+#endif
 #include "coretypes.h"
+#if GCC_MAJOR == 5
+#include "hash-set.h"
+#include "vec.h"
+#include "input.h"
+#include "alias.h"
+#include "inchash.h"  
+#include "double-int.h"
+#include "libiberty.h"
+#endif
 #include "tm.h"
 #include "tree.h"
 

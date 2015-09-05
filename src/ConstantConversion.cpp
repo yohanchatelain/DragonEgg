@@ -47,11 +47,26 @@ extern "C" {
 // Stop GCC declaring 'getopt' as it can clash with the system's declaration.
 #undef HAVE_DECL_GETOPT
 #include "system.h"
+#if (GCC_MAJOR == 5)
+#include "symtab.h"
+#endif
 #include "coretypes.h"
+#if (GCC_MAJOR == 5)
+#include "hash-set.h"
+#include "vec.h"
+#include "input.h"
+#include "alias.h"
+#include "inchash.h"  
+#include "double-int.h"
+#endif
 #include "tm.h"
 #include "tree.h"
+#if (GCC_MAJOR == 5)
+#include "machmode.h"
+#include "fold-const.h"
+#endif
 
-#if (GCC_MINOR < 7)
+#if (GCC_MINOR < 7 && GCC_MAJOR == 4)
 #include "flags.h" // For POINTER_TYPE_OVERFLOW_UNDEFINED.
 #endif
 #include "tm_p.h" // For CONSTANT_ALIGNMENT.
@@ -60,7 +75,7 @@ extern "C" {
 #endif
 
 //Below lines added by Arun in attempt to compile using gcc-4.9
-#if (GCC_MINOR == 9)
+#if ((GCC_MINOR == 9 && GCC_MAJOR == 4) || GCC_MAJOR == 5)
 #include "stor-layout.h"
 #include "print-tree.h"
 #endif
@@ -545,7 +560,7 @@ static Constant *ExtractRegisterFromConstantImpl(
     return ConstantStruct::getAnon(Vals);
   }
 
-#if (GCC_MINOR > 5)
+#if ((GCC_MINOR > 5 && GCC_MAJOR == 4) || GCC_MAJOR == 5)
   case NULLPTR_TYPE:
 #endif
   case OFFSET_TYPE:
@@ -636,7 +651,7 @@ RepresentAsMemory(Constant *C, tree type, TargetFolder &Folder) {
     break;
   }
 
-#if (GCC_MINOR > 5)
+#if ((GCC_MINOR > 5 && GCC_MAJOR == 4) || GCC_MAJOR == 5)
   case NULLPTR_TYPE:
 #endif
   case OFFSET_TYPE:
@@ -892,7 +907,7 @@ static Constant *ConvertArrayCONSTRUCTOR(tree exp, TargetFolder &Folder) {
       assert(host_integerp(first, 1) && host_integerp(last, 1) &&
              "Unknown range_expr!");
 //Below condition added by Arun
-#if (GCC_MINOR <= 8)
+#if (GCC_MINOR <= 8 && GCC_MAJOR == 4)
 //End of lines added by Arun
       FirstIndex = tree_low_cst(first, 1);
       LastIndex = tree_low_cst(last, 1);
@@ -908,7 +923,7 @@ static Constant *ConvertArrayCONSTRUCTOR(tree exp, TargetFolder &Folder) {
         index = fold_build2(MINUS_EXPR, main_type(index), index, lower_bnd);
       assert(host_integerp(index, 1));
 //Below condition added by Arun
-#if (GCC_MINOR <= 8)
+#if (GCC_MINOR <= 8 && GCC_MAJOR == 4)
 //End of lines added by Arun
       FirstIndex = tree_low_cst(index, 1);
 //Below lines added by Arun in attempt to compile using gcc 4.9
@@ -1642,7 +1657,7 @@ static Constant *AddressOfLABEL_DECL(tree exp, TargetFolder &) {
   return TheTreeToLLVM->AddressOfLABEL_DECL(exp);
 }
 
-#if (GCC_MINOR > 5)
+#if ((GCC_MINOR > 5 && GCC_MAJOR == 4) || GCC_MAJOR == 5)
 /// AddressOfMEM_REF - Return the address of a memory reference.
 static Constant *AddressOfMEM_REF(tree exp, TargetFolder &Folder) {
   // The address is the first operand offset in bytes by the second.
@@ -1694,7 +1709,7 @@ static Constant *AddressOfImpl(tree exp, TargetFolder &Folder) {
     Addr = AddressOfDecl(exp, Folder);
     break;
   case INDIRECT_REF:
-#if (GCC_MINOR < 6)
+#if (GCC_MINOR < 6 && GCC_MAJOR == 4)
   case MISALIGNED_INDIRECT_REF:
 #endif
     Addr = AddressOfINDIRECT_REF(exp, Folder);
@@ -1702,7 +1717,7 @@ static Constant *AddressOfImpl(tree exp, TargetFolder &Folder) {
   case LABEL_DECL:
     Addr = AddressOfLABEL_DECL(exp, Folder);
     break;
-#if (GCC_MINOR > 5)
+#if ((GCC_MINOR > 5 && GCC_MAJOR == 4) || GCC_MAJOR == 5)
   case MEM_REF:
     Addr = AddressOfMEM_REF(exp, Folder);
     break;
