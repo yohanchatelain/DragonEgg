@@ -568,7 +568,7 @@ private:
   llvm::Value *EmitReg_TRUNC_DIV_EXPR(tree_node *op0, tree_node *op1,
                                       bool isExact);
   llvm::Value *EmitReg_TRUNC_MOD_EXPR(tree_node *op0, tree_node *op1);
-#if (GCC_MINOR < 7)
+#if (GCC_MINOR < 7 && GCC_MAJOR == 4)
   llvm::Value *EmitReg_VEC_EXTRACT_EVEN_EXPR(tree_node *op0, tree_node *op1);
   llvm::Value *EmitReg_VEC_EXTRACT_ODD_EXPR(tree_node *op0, tree_node *op1);
   llvm::Value *EmitReg_VEC_INTERLEAVE_HIGH_EXPR(tree_node *op0, tree_node *op1);
@@ -587,10 +587,10 @@ private:
 
   // Ternary expressions.
   llvm::Value *EmitReg_CondExpr(tree_node *op0, tree_node *op1, tree_node *op2);
-#if (GCC_MINOR > 5)
+#if ((GCC_MINOR > 5 && GCC_MAJOR == 4) || GCC_MAJOR == 5)
   llvm::Value *EmitReg_FMA_EXPR(tree_node *op0, tree_node *op1, tree_node *op2);
 #endif
-#if (GCC_MINOR > 6)
+#if ((GCC_MINOR > 6 && GCC_MAJOR == 4) || GCC_MAJOR == 5)
   llvm::Value *EmitReg_VEC_PERM_EXPR(tree_node *op0, tree_node *op1,
                                      tree_node *op2);
 #endif
@@ -598,7 +598,7 @@ private:
   llvm::Value *EmitLoadOfLValue(tree_node *exp);
   llvm::Value *EmitOBJ_TYPE_REF(tree_node *exp);
   llvm::Value *EmitADDR_EXPR(tree_node *exp);
-#if (GCC_MINOR < 7)
+#if (GCC_MINOR < 7 && GCC_MAJOR == 4)
   llvm::Value *EmitCondExpr(tree_node *exp);
 #endif
   llvm::Value *EmitCallOf(llvm::Value *Callee, gimple_statement_d *stmt,
@@ -647,7 +647,7 @@ private:
   bool EmitBuiltinAlloca(gimple_statement_d *stmt, llvm::Value *&Result);
   bool EmitBuiltinAllocaWithAlign(gimple_statement_d *stmt,
                                   llvm::Value *&Result);
-#if (GCC_MINOR > 6)
+#if ((GCC_MINOR > 6 && GCC_MAJOR == 4) || GCC_MAJOR == 5)
   bool EmitBuiltinAssumeAligned(gimple_statement_d *stmt, llvm::Value *&Result);
 #endif
   bool EmitBuiltinBZero(gimple_statement_d *stmt, llvm::Value *&Result);
@@ -696,10 +696,10 @@ private:
   LValue EmitLV_COMPONENT_REF(tree_node *exp);
   LValue EmitLV_DECL(tree_node *exp);
   LValue EmitLV_INDIRECT_REF(tree_node *exp);
-#if (GCC_MINOR > 5)
+#if ((GCC_MINOR > 5 && GCC_MAJOR == 4) || GCC_MAJOR == 5)
   LValue EmitLV_MEM_REF(tree_node *exp);
 #endif
-#if (GCC_MINOR < 6)
+#if (GCC_MINOR < 6 && GCC_MAJOR == 4)
   LValue EmitLV_MISALIGNED_INDIRECT_REF(tree_node *exp);
 #endif
   LValue EmitLV_VIEW_CONVERT_EXPR(tree_node *exp);
