@@ -43,6 +43,19 @@ extern "C" {
 #include "system.h"
 #include "coretypes.h"
 #include "target.h"
+// Below lines added by Arun in attempt to compile with gcc-5
+#if (GCC_MAJOR == 5)
+#include "plugin-api.h"
+#include "vec.h"
+#include "ipa-ref.h"
+#include "alias.h"
+#include "double-int.h"
+#include "hash-set.h"
+#include "inchash.h"
+#include "input.h"
+#include "symtab.h"
+#endif
+// End of lines added by Arun
 #include "tree.h"
 
 #include "diagnostic.h"
@@ -56,13 +69,18 @@ extern "C" {
   #include "basic-block.h"
   #include "gimple-expr.h"
   /* End of lines inserted by Tarun to get this to work with GCC 4.9 */
+// Below lines added by Arun in attempt to compile with gcc-5
+#if (GCC_MAJOR == 5)
+#include "fold-const.h"
+#endif
+// End of lines added by Arun
 #include "gimple.h"
-#if (GCC_MINOR > 6)
+#if ((GCC_MINOR > 6 && GCC_MAJOR == 4) || GCC_MAJOR == 5)
 #include "gimple-pretty-print.h"
 #endif
 #include "toplev.h"
 
-#if (GCC_MINOR == 6)
+#if (GCC_MINOR == 6 && GCC_MAJOR == 4)
 extern void debug_gimple_stmt(union gimple_statement_d *);
 #endif
 

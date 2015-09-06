@@ -1885,7 +1885,7 @@ static struct rtl_opt_pass pass_rtl_emit_function = { {
 //Lines added by Arun in attempting to compile with gcc 4.9
 #else                        /* #if (GCC_MINOR<=8 && GCC_MAJOR == 4) */
 
-#if ((GCC_MINOR == 9 && GC_MAJOR == 4) || GCC_MAJOR == 5)
+#if ((GCC_MINOR == 9 && GCC_MAJOR == 4) || GCC_MAJOR == 5)
 static struct pass_data pass_data_rtl_emit_function = {
   RTL_PASS, "rtl_emit_function",         /* name */
   OPTGROUP_NONE,                         /* optinfo_flags */
@@ -1945,7 +1945,7 @@ rtl_opt_pass *make_pass_rtl_emit_function (gcc::context *ctxt) {
   return new pass_rtl_emit_function(ctxt);
 }
 //pass_rtl_emit_function pass_rtl_emit_function(g);
-#endif    /* #if ((GCC_MINOR == 9 && GC_MAJOR == 4) || GCC_MAJOR == 5) */
+#endif    /* #if ((GCC_MINOR == 9 && GCC_MAJOR == 4) || GCC_MAJOR == 5) */
 
 #endif    /* #if (GCC_MINOR <= 8 && GCC_MAJOR == 4) */
 //End of lines added by Arun
