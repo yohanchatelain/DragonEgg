@@ -60,6 +60,7 @@ extern "C" {
 
 #include "diagnostic.h"
   /* Start of lines inserted by Tarun to get this to work with GCC 4.9 */
+#if ((GCC_MINOR == 9 && GCC_MAJOR == 4) || GCC_MAJOR == 5)
 #include "tree-ssa-alias.h"
   #include "internal-fn.h"
   #include "is-a.h"
@@ -68,6 +69,7 @@ extern "C" {
   #include "function.h"
   #include "basic-block.h"
   #include "gimple-expr.h"
+#endif
   /* End of lines inserted by Tarun to get this to work with GCC 4.9 */
 // Below lines added by Arun in attempt to compile with gcc-5
 #if (GCC_MAJOR == 5)

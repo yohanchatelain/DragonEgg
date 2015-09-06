@@ -1135,7 +1135,11 @@ void TreeToLLVM::StartFunctionBody() {
 
   // Create a new basic block for the function.
   BasicBlock *EntryBlock = BasicBlock::Create(Context, "entry", Fn);
+#if (GCC_MINOR <= 8 && GCC_MAJOR == 4)
+  BasicBlocks[ENTRY_BLOCK_PTR] = EntryBlock;
+#else
   BasicBlocks[ENTRY_BLOCK_PTR_FOR_FN(cfun)] = EntryBlock;
+#endif
   Builder.SetInsertPoint(EntryBlock);
 
   if (EmitDebugInfo())
@@ -1603,7 +1607,11 @@ BasicBlock *TreeToLLVM::getLabelDeclBlock(tree LabelDecl) {
   basic_block bb = label_to_block(LabelDecl);
   if (!bb) {
     sorry("address of a non-local label");
+#if (GCC_MINOR <= 8 && GCC_MAJOR == 4)
+    bb = ENTRY_BLOCK_PTR; // Do not crash.
+#else
     bb = ENTRY_BLOCK_PTR_FOR_FN(cfun); // Do not crash.
+#endif
   }
 
   BasicBlock *BB = getBasicBlock(bb);
@@ -1616,7 +1624,13 @@ void TreeToLLVM::EmitBasicBlock(basic_block bb) {
   ++NumBasicBlocks;
 
   // Avoid outputting a pointless branch at the end of the entry block.
-  if (bb != ENTRY_BLOCK_PTR_FOR_FN(cfun))
+  if (bb != 
+#if (GCC_MINOR <= 8 && GCC_MAJOR == 4)
+           ENTRY_BLOCK_PTR
+#else
+           ENTRY_BLOCK_PTR_FOR_FN(cfun)
+#endif
+           )
     BeginBlock(getBasicBlock(bb));
 
   // Create an LLVM phi node for each GCC phi and define the associated ssa name
