@@ -1720,7 +1720,7 @@ int plugin_is_GPL_compatible __attribute__((visibility("default")));
 static void llvm_start_unit(void */*gcc_data*/, void */*user_data*/) {
   if (!quiet_flag)
     errs() << "Starting compilation unit\n";
-/*
+#if (GCC_MINOR <= 8 && GCC_MAJOR == 4)
 #ifdef ENABLE_LTO
   // Output LLVM IR if the user requested generation of lto data.
   EmitIR |= flag_generate_lto != 0;
@@ -1734,7 +1734,7 @@ static void llvm_start_unit(void */*gcc_data*/, void */*user_data*/) {
   flag_generate_lto = 1;
   flag_whole_program = 0;
 #endif
-*/
+#endif    /* (GCC_MINOR <= 8 && GCC_MAJOR == 4) */
   // Stop GCC outputting serious amounts of debug info.
   debug_hooks = &do_nothing_debug_hooks;
 

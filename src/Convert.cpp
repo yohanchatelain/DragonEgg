@@ -9235,7 +9235,7 @@ bool TreeToLLVM::EmitBuiltinCall(gimple stmt, tree fndecl,
     void TreeToLLVM::RenderGIMPLE_ASSIGN(gimple stmt) {
       tree lhs = gimple_assign_lhs(stmt);
 
-#if ((GCC_MINOR > 6 && GC_MAJOR == 4) || GCC_MAJOR == 5)
+#if ((GCC_MINOR > 6 && GCC_MAJOR == 4) || GCC_MAJOR == 5)
       // Assigning a right-hand side with TREE_CLOBBER_P says that the left-hand
       // side is dead from this point on.  Output an llvm.lifetime.end intrinsic.
       if (get_gimple_rhs_class(gimple_expr_code(stmt)) == GIMPLE_SINGLE_RHS &&
