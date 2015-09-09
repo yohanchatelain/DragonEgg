@@ -262,7 +262,8 @@ void DebugInfo::EmitFunctionStart(tree FnDecl, Function *Fn) {
     // Below line commented by Tarun in attempt to compile using llvm-3.6
     // SPDecl->replaceAllUsesWith(SP);
 #if (GCC_MAJOR == 5)  // NOTE this might be a llvm thing in which case the #if is incorrect
-    SPDecl.replaceAllUsesWith(SP);
+// Below line commented by Arun to deal with a segfault in test DeclLoc.cpp
+//    SPDecl.replaceAllUsesWith(SP);
 #endif
 
     // Push function on region stack.

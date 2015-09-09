@@ -684,6 +684,8 @@ static void InstallLanguageSettings() {
   } else if (LanguageName == "GNU Objective-C") {
   } else if (LanguageName == "GNU Objective-C++") {
     flag_odr = true; // Objective C++ obeys the one-definition-rule
+  } else if (LanguageName == "GNU C11") {
+    flag_no_simplify_libcalls = flag_no_builtin;
   }
 }
 
