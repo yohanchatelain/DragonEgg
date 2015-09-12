@@ -1737,6 +1737,17 @@ static void llvm_start_unit(void */*gcc_data*/, void */*user_data*/) {
   flag_whole_program = 0;
 #endif
 #endif    /* (GCC_MINOR <= 8 && GCC_MAJOR == 4) */
+// Below lines added by Arun to test why gcc-4.8 works better than gcc-5
+#if (GCC_MAJOR == 5)
+#ifdef ENABLE_LTO
+//  EmitIR |= flag_generate_lto != 0;
+//  flag_lto = "";
+  flag_generate_lto = 1;
+//  flag_whole_program = 0;
+#endif
+#endif
+// End of lines added by Arun
+
   // Stop GCC outputting serious amounts of debug info.
   debug_hooks = &do_nothing_debug_hooks;
 
