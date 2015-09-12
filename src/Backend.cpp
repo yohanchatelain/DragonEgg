@@ -676,7 +676,9 @@ static void InstallLanguageSettings() {
   } else if (LanguageName == "GNU C++") {
     flag_odr = true; // C++ obeys the one-definition-rule
     flag_no_simplify_libcalls = flag_no_builtin;
-  } else if (LanguageName == "GNU Fortran") {
+  } else if (LanguageName == "GNU Fortran"
+             || LanguageName == "GNU Fortran2008"
+             || LanguageName == "GNU Fortran2003") {
     flag_functions_from_args = true;
   } else if (LanguageName == "GNU GIMPLE") { // LTO gold plugin
   } else if (LanguageName == "GNU Go") {
