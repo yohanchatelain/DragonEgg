@@ -39,11 +39,11 @@ extern "C" {
 // Stop GCC declaring 'getopt' as it can clash with the system's declaration.
 #undef HAVE_DECL_GETOPT
 #include "system.h"
-#if (GCC_MAJOR == 5)
+#if (GCC_MAJOR >= 5)
 #include "symtab.h"
 #endif
 #include "coretypes.h"
-#if (GCC_MAJOR == 5)
+#if (GCC_MAJOR >= 5)
 #include "hash-set.h"
 #include "vec.h"
 #include "input.h"
@@ -210,7 +210,7 @@ static StringRef getLinkageName(tree Node) {
   tree decl_name = DECL_NAME(Node);
   if (decl_name != NULL && IDENTIFIER_POINTER(decl_name) != NULL) {
     if (TREE_PUBLIC(Node) && DECL_ASSEMBLER_NAME(Node) != DECL_NAME(Node) &&
-#if (GCC_MAJOR == 5)
+#if (GCC_MAJOR >= 5)
         !DECL_ABSTRACT_P(Node)
 #else
         !DECL_ABSTRACT(Node)
@@ -261,7 +261,7 @@ void DebugInfo::EmitFunctionStart(tree FnDecl, Function *Fn) {
     DISubprogram SP = CreateSubprogramDefinition(SPDecl, lineno, Fn);
     // Below line commented by Tarun in attempt to compile using llvm-3.6
     // SPDecl->replaceAllUsesWith(SP);
-#if (GCC_MAJOR == 5)  // NOTE this might be a llvm thing in which case the #if is incorrect
+#if (GCC_MAJOR >= 5)  // NOTE this might be a llvm thing in which case the #if is incorrect
 // Below line commented by Arun to deal with a segfault in test DeclLoc.cpp
 //    SPDecl.replaceAllUsesWith(SP);
 #endif
@@ -295,7 +295,7 @@ void DebugInfo::EmitFunctionStart(tree FnDecl, Function *Fn) {
     DISubprogram SP = CreateSubprogramDefinition(SPDecl, lineno, Fn);
     // Below line commented by Tarun in attempt to compile using llvm-3.6
     // SPDecl->replaceAllUsesWith(SP);
-#if (GCC_MAJOR == 5)  // NOTE this might be a llvm thing in which case the #if is incorrect
+#if (GCC_MAJOR >= 5)  // NOTE this might be a llvm thing in which case the #if is incorrect
     SPDecl.replaceAllUsesWith(SP);
 #endif
 
@@ -318,15 +318,13 @@ void DebugInfo::EmitFunctionStart(tree FnDecl, Function *Fn) {
   DIType ContainingType;
   if (DECL_VINDEX(FnDecl) && DECL_CONTEXT(FnDecl) &&
       isa<TYPE>((DECL_CONTEXT(FnDecl)))) { // Workaround GCC PR42653
-#if (GCC_MINOR <= 8 && GCC_MAJOR == 4)    /* Condition added by Arun */
+#if (GCC_MINOR <= 8 && GCC_MAJOR == 4)
     if (host_integerp(DECL_VINDEX(FnDecl), 0))
       VIndex = tree_low_cst(DECL_VINDEX(FnDecl), 0);
-//Below lines added by Arun
 #else
     if (tree_fits_shwi_p(DECL_VINDEX(FnDecl)))
       VIndex = tree_to_shwi(DECL_VINDEX(FnDecl));
 #endif
-//End of lines added by Arun
     Virtuality = dwarf::DW_VIRTUALITY_virtual;
     ContainingType = getOrCreateType(DECL_CONTEXT(FnDecl));
   }
@@ -553,7 +551,7 @@ DIType DebugInfo::createMethodType(tree type) {
     findRegion(TYPE_CONTEXT(type)), getOrCreateFile(main_input_filename),
     0, 0, 0, 0);
   llvm::MDNode *FTN = FwdType;
-#if (GCC_MAJOR == 5)  // NOTE this might be a llvm thing in which case the #if is incorrect
+#if (GCC_MAJOR >= 5)  // NOTE this might be a llvm thing in which case the #if is incorrect
   llvm::TrackingMDRef FwdTypeNode(FTN);
 #else
   llvm::TrackingMDNodeRef FwdTypeNode(FTN);
@@ -789,7 +787,7 @@ DIType DebugInfo::createStructType(tree type) {
 
   // Insert into the TypeCache so that recursive uses will find it.
   llvm::MDNode *FDN = FwdDecl;
-#if (GCC_MAJOR == 5)  // NOTE this might be a llvm thing in which case the #if is incorrect
+#if (GCC_MAJOR >= 5)  // NOTE this might be a llvm thing in which case the #if is incorrect
   llvm::TrackingMDRef FwdDeclNode(FDN);
 #else
   llvm::TrackingMDNodeRef FwdDeclNode(FDN);
@@ -910,15 +908,13 @@ DIType DebugInfo::createStructType(tree type) {
       unsigned VIndex = 0;
       DIType ContainingType;
       if (DECL_VINDEX(Member)) {
-#if (GCC_MINOR <= 8 && GCC_MAJOR == 4)     /* Condition added by Arun */
+#if (GCC_MINOR <= 8 && GCC_MAJOR == 4)
         if (host_integerp(DECL_VINDEX(Member), 0))
           VIndex = tree_low_cst(DECL_VINDEX(Member), 0);
-//Below lines added by Arun
 #else
         if (tree_fits_shwi_p(DECL_VINDEX(Member)))
           VIndex = tree_to_shwi(DECL_VINDEX(Member));
 #endif
-//End of lines added by Arun
          Virtuality = dwarf::DW_VIRTUALITY_virtual;
         ContainingType = getOrCreateType(DECL_CONTEXT(Member));
       }
@@ -1059,7 +1055,7 @@ DIType DebugInfo::getOrCreateType(tree type) {
   default:
     llvm_unreachable("Unsupported type");
 
-#if ((GCC_MINOR > 5 && GCC_MAJOR == 4) || GCC_MAJOR == 5)
+#if ((GCC_MINOR > 5 && GCC_MAJOR == 4) || GCC_MAJOR >= 5)
   case NULLPTR_TYPE:
 #endif
   case LANG_TYPE: {

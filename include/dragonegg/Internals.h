@@ -35,17 +35,12 @@
 
 struct basic_block_def;
 
-#if (GCC_MINOR <= 8 && GCC_MAJOR == 4) /* Condition added by Arun */
+#if (GCC_MINOR <= 8 && GCC_MAJOR == 4)
 union gimple_statement_d;
-//Below lines added by Arun in attempt to compile using gcc-4.9
-//These lines should be a temporary measure
-//gcc-4.9 replaced "union gimple_statement_d" with "struct gimple_statement_base"
-//The typedef that follows is just a quickfix to deal with that change.
 #else
 struct gimple_statement_base;
 typedef struct gimple_statement_base gimple_statement_d;
 #endif
-//End of lines added by Arun
 
 union tree_node;
 
@@ -596,10 +591,10 @@ private:
 
   // Ternary expressions.
   llvm::Value *EmitReg_CondExpr(tree_node *op0, tree_node *op1, tree_node *op2);
-#if ((GCC_MINOR > 5 && GCC_MAJOR == 4) || GCC_MAJOR == 5)
+#if ((GCC_MINOR > 5 && GCC_MAJOR == 4) || GCC_MAJOR >= 5)
   llvm::Value *EmitReg_FMA_EXPR(tree_node *op0, tree_node *op1, tree_node *op2);
 #endif
-#if ((GCC_MINOR > 6 && GCC_MAJOR == 4) || GCC_MAJOR == 5)
+#if ((GCC_MINOR > 6 && GCC_MAJOR == 4) || GCC_MAJOR >= 5)
   llvm::Value *EmitReg_VEC_PERM_EXPR(tree_node *op0, tree_node *op1,
                                      tree_node *op2);
 #endif
@@ -656,7 +651,7 @@ private:
   bool EmitBuiltinAlloca(gimple_statement_d *stmt, llvm::Value *&Result);
   bool EmitBuiltinAllocaWithAlign(gimple_statement_d *stmt,
                                   llvm::Value *&Result);
-#if ((GCC_MINOR > 6 && GCC_MAJOR == 4) || GCC_MAJOR == 5)
+#if ((GCC_MINOR > 6 && GCC_MAJOR == 4) || GCC_MAJOR >= 5)
   bool EmitBuiltinAssumeAligned(gimple_statement_d *stmt, llvm::Value *&Result);
 #endif
   bool EmitBuiltinBZero(gimple_statement_d *stmt, llvm::Value *&Result);
@@ -705,7 +700,7 @@ private:
   LValue EmitLV_COMPONENT_REF(tree_node *exp);
   LValue EmitLV_DECL(tree_node *exp);
   LValue EmitLV_INDIRECT_REF(tree_node *exp);
-#if ((GCC_MINOR > 5 && GCC_MAJOR == 4) || GCC_MAJOR == 5)
+#if ((GCC_MINOR > 5 && GCC_MAJOR == 4) || GCC_MAJOR >= 5)
   LValue EmitLV_MEM_REF(tree_node *exp);
 #endif
 #if (GCC_MINOR < 6 && GCC_MAJOR == 4)

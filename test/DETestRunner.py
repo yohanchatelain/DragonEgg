@@ -1,5 +1,9 @@
 import os
-import StringIO
+import sys
+if sys.version_info >= (3,0):
+    from io import StringIO
+else:
+    import StringIO
 import DEUtils
 
 from lit import Test
@@ -29,7 +33,7 @@ def compareCommands(cmds, args, cwd=None):
     failed = False
 
     # Check that all commands exited with the same code.
-    out,err,commonExitCode = results[0]
+    out,err,commonExitCode = list(results)[0]
     for result in results:
         out,err,exitCode = result
         if exitCode != commonExitCode:

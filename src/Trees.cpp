@@ -37,11 +37,11 @@ extern "C" {
 // Stop GCC declaring 'getopt' as it can clash with the system's declaration.
 #undef HAVE_DECL_GETOPT
 #include "system.h"
-#if (GCC_MAJOR == 5)
+#if (GCC_MAJOR >= 5)
 #include "symtab.h"
 #endif
 #include "coretypes.h"
-#if (GCC_MAJOR == 5)
+#if (GCC_MAJOR >= 5)
 #include "hash-set.h"
 #include "vec.h"
 #include "input.h"
@@ -175,7 +175,7 @@ std::string getDescriptiveName(const_tree t) {
 /// the truncated value must sign-/zero-extend to the original.
 APInt getAPIntValue(const_tree exp, unsigned Bitwidth) {
   assert(isa<INTEGER_CST>(exp) && "Expected an integer constant!");
-#if (GCC_MAJOR == 5)
+#if (GCC_MAJOR >= 5)
   widest_int val = wi::to_widest(exp);
 #else
   double_int val = tree_to_double_int(exp);
@@ -184,13 +184,13 @@ APInt getAPIntValue(const_tree exp, unsigned Bitwidth) {
 
   APInt DefaultValue;
   if (integerPartWidth == HOST_BITS_PER_WIDE_INT) {
-#if (GCC_MAJOR == 5)  // NOTE this may be llvm stuff in which case the #if is incorrect
+#if (GCC_MAJOR >= 5)  // NOTE this may be llvm stuff in which case the #if is incorrect
     DefaultValue = APInt(DefaultWidth, llvm::makeArrayRef((const integerPart *)val.get_val(), 2));
 #else
     DefaultValue = APInt(DefaultWidth, /*numWords*/ 2, (integerPart *)&val);
 #endif
   } else {
-#if (GCC_MAJOR == 5)
+#if (GCC_MAJOR >= 5)
     assert("Unsupported host integer width!");
 #else
     assert(integerPartWidth == 2 * HOST_BITS_PER_WIDE_INT &&
@@ -227,9 +227,8 @@ bool isInt64(const_tree t, bool Unsigned) {
   if (!t)
     return false;
   if (HOST_BITS_PER_WIDE_INT == 64)
-#if (GCC_MINOR <= 8 && GCC_MAJOR == 4)     /* Condition added by Arun */
+#if (GCC_MINOR <= 8 && GCC_MAJOR == 4)
     return host_integerp(t, Unsigned) && !TREE_OVERFLOW(t);
-//Below lines added by Arun
 #else
   {
     if (Unsigned)
@@ -238,8 +237,7 @@ bool isInt64(const_tree t, bool Unsigned) {
       return tree_fits_shwi_p(t) && !TREE_OVERFLOW(t);
   }
 #endif
-//End of lines added by Arun
-#if (GCC_MAJOR == 5)
+#if (GCC_MAJOR >= 5)
   assert("Only 64-bit hosts supported!");
   return false;
 #else
@@ -265,7 +263,7 @@ uint64_t getInt64(const_tree t, bool Unsigned) {
   if (HOST_BITS_PER_WIDE_INT == 64) {
     return (uint64_t) LO;
   } else {
-#if (GCC_MAJOR == 5)
+#if (GCC_MAJOR >= 5)
     assert("Only 64-bit hosts supported!");
     return 0;
 #else

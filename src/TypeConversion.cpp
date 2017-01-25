@@ -45,11 +45,11 @@ extern "C" {
 // Stop GCC declaring 'getopt' as it can clash with the system's declaration.
 #undef HAVE_DECL_GETOPT
 #include "system.h"
-#if (GCC_MAJOR == 5)
+#if (GCC_MAJOR >= 5)
 #include "symtab.h"
 #endif
 #include "coretypes.h"
-#if (GCC_MAJOR == 5)
+#if (GCC_MAJOR >= 5)
 #include "hash-set.h"
 #include "vec.h"
 #include "input.h"
@@ -60,18 +60,18 @@ extern "C" {
 #endif
 #include "tm.h"
 #include "tree.h"
+#include "machmode.h"
+#include "stor-layout.h"
 
 #include "flags.h"
 #ifndef ENABLE_BUILD_WITH_CXX
 } // extern "C"
 #endif
 
-//Below lines added by Arun in attempt to compile using gcc-4.9
-#if ((GCC_MINOR == 9 && GCC_MAJOR == 4) || GCC_MAJOR == 5)
+#if ((GCC_MINOR == 9 && GCC_MAJOR == 4) || GCC_MAJOR >= 5)
 #include "print-tree.h"
 #include "calls.h"
 #endif
-//End of lines added by Arun
 
 // Trees header.
 #include "dragonegg/Trees.h"
@@ -179,7 +179,7 @@ public:
     case ENUMERAL_TYPE:
     case FIXED_POINT_TYPE:
     case INTEGER_TYPE:
-#if ((GCC_MINOR > 5 && GCC_MAJOR == 4) || GCC_MAJOR == 5)
+#if ((GCC_MINOR > 5 && GCC_MAJOR == 4) || GCC_MAJOR >= 5)
     case NULLPTR_TYPE:
 #endif
     case OFFSET_TYPE:
@@ -475,7 +475,7 @@ Type *getRegType(tree type) {
     return StructType::get(EltTy, EltTy, NULL);
   }
 
-#if ((GCC_MINOR > 5 && GCC_MAJOR == 4) || GCC_MAJOR == 5)
+#if ((GCC_MINOR > 5 && GCC_MAJOR == 4) || GCC_MAJOR >= 5)
   case NULLPTR_TYPE:
     return GetUnitPointerType(Context, TYPE_ADDR_SPACE(type));
 #endif
@@ -1281,7 +1281,7 @@ static bool mayRecurse(tree type) {
   case ENUMERAL_TYPE:
   case FIXED_POINT_TYPE:
   case INTEGER_TYPE:
-#if ((GCC_MINOR > 5 && GCC_MAJOR == 4) || GCC_MAJOR == 5)
+#if ((GCC_MINOR > 5 && GCC_MAJOR == 4) || GCC_MAJOR >= 5)
   case NULLPTR_TYPE:
 #endif
   case OFFSET_TYPE:
@@ -1445,7 +1445,7 @@ static Type *ConvertTypeNonRecursive(tree type) {
     break;
   }
 
-#if ((GCC_MINOR > 5 && GCC_MAJOR == 4) || GCC_MAJOR == 5)
+#if ((GCC_MINOR > 5 && GCC_MAJOR == 4) || GCC_MAJOR >= 5)
   case NULLPTR_TYPE:
     Ty = GetUnitPointerType(Context, TYPE_ADDR_SPACE(type));
     break;

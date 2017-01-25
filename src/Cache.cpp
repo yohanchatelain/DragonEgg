@@ -43,11 +43,11 @@ extern "C" {
 // Stop GCC declaring 'getopt' as it can clash with the system's declaration.
 #undef HAVE_DECL_GETOPT
 #include "system.h"
-#if (GCC_MAJOR == 5)
+#if (GCC_MAJOR >= 5)
 #include "symtab.h"
 #endif
 #include "coretypes.h"
-#if (GCC_MAJOR == 5)
+#if (GCC_MAJOR >= 5)
 #include "hash-set.h"
 #include "vec.h"
 #include "input.h"
@@ -123,13 +123,11 @@ struct GTY(()) tree2WeakVH {
 static GTY((if_marked("tree2WeakVH_marked_p"), param_is(struct tree2WeakVH)))
     htab_t WeakVHCache;
 
-// Below lines added by Arun in attempt to compile with gcc-5
-#if (GCC_MAJOR == 5)
+#if (GCC_MAJOR >= 5)
 #define ggc_alloc_tree2WeakVH() ((struct tree2WeakVH *)(ggc_internal_alloc (sizeof (struct tree2WeakVH) MEM_STAT_INFO)))
 #define ggc_alloc_tree2int() ((struct tree2int *)(ggc_internal_alloc (sizeof (struct tree2int) MEM_STAT_INFO)))
 #define ggc_alloc_tree2Type() ((struct tree2Type *)(ggc_internal_alloc (sizeof (struct tree2Type) MEM_STAT_INFO)))
 #endif
-// End of lines added by Arun
 #if (GCC_MAJOR == 4)
 // Include the garbage collector header.
 #ifndef ENABLE_BUILD_WITH_CXX
@@ -157,13 +155,11 @@ bool getCachedInteger(tree t, int &Val) {
 
 void setCachedInteger(tree t, int Val) {
   if (!intCache)
-// Below lines added by Arun in attempt to compile with gcc-5
-#if (GCC_MAJOR == 5)
+#if (GCC_MAJOR >= 5)
     intCache = htab_create(1024, tree2int_hash, tree2int_eq, 0);
 #else
-// End of lines added by Arun
     intCache = htab_create_ggc(1024, tree2int_hash, tree2int_eq, 0);
-#endif      // GCC_MAJOR == 5, added by Arun
+#endif
 
   tree_map_base in = { t };
   tree2int **slot = (tree2int **)htab_find_slot(intCache, &in, INSERT);
@@ -171,7 +167,7 @@ void setCachedInteger(tree t, int Val) {
 
   if (!*slot) {
     *slot =
-#if ((GCC_MINOR > 5 && GCC_MAJOR == 4) || GCC_MAJOR == 5)
+#if ((GCC_MINOR > 5 && GCC_MAJOR == 4) || GCC_MAJOR >= 5)
         ggc_alloc_tree2int();
 #else
     GGC_NEW(struct tree2int);
@@ -201,20 +197,18 @@ void setCachedType(tree t, Type *Ty) {
   }
 
   if (!TypeCache)
-// Below lines added by Arun in attempt to compile with gcc-5
-#if (GCC_MAJOR == 5)
+#if (GCC_MAJOR >= 5)
     TypeCache = htab_create(1024, tree2Type_hash, tree2Type_eq, 0);
 #else
-// End of lines added by Arun
     TypeCache = htab_create_ggc(1024, tree2Type_hash, tree2Type_eq, 0);
-#endif      // GCC_MAJOR == 5, added by Arun
+#endif
 
   tree2Type **slot = (tree2Type **)htab_find_slot(TypeCache, &in, INSERT);
   assert(slot && "Failed to create hash table slot!");
 
   if (!*slot) {
     *slot =
-#if ((GCC_MINOR > 5 && GCC_MAJOR == 4) || GCC_MAJOR == 5)
+#if ((GCC_MINOR > 5 && GCC_MAJOR == 4) || GCC_MAJOR >= 5)
         ggc_alloc_tree2Type();
 #else
     GGC_NEW(struct tree2Type);
@@ -253,15 +247,13 @@ void setCachedValue(tree t, Value *V) {
   }
 
   if (!WeakVHCache)
-// Below lines added by Arun in attempt to compile with gcc-5
-#if (GCC_MAJOR == 5)
+#if (GCC_MAJOR >= 5)
     WeakVHCache =
         htab_create(1024, tree2WeakVH_hash, tree2WeakVH_eq, DestructWeakVH);
 #else
-// End of lines added by Arun
     WeakVHCache =
         htab_create_ggc(1024, tree2WeakVH_hash, tree2WeakVH_eq, DestructWeakVH);
-#endif     // GCC_MAJOR == 5, added by Arun
+#endif
 
   tree2WeakVH **slot = (tree2WeakVH **)htab_find_slot(WeakVHCache, &in, INSERT);
   assert(slot && "Failed to create hash table slot!");
@@ -272,7 +264,7 @@ void setCachedValue(tree t, Value *V) {
   }
 
   *slot =
-#if ((GCC_MINOR > 5 && GCC_MAJOR == 4) || GCC_MAJOR == 5)
+#if ((GCC_MINOR > 5 && GCC_MAJOR == 4) || GCC_MAJOR >= 5)
       ggc_alloc_tree2WeakVH();
 #else
   GGC_NEW(struct tree2WeakVH);

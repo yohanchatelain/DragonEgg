@@ -55,7 +55,7 @@ extern "C" {
 #endif
 
 /* Start of includes added by Tarun to make it work with GCC 4.9.2 */
-#if ((GCC_MINOR == 9 && GCC_MAJOR == 4) || GCC_MAJOR == 5)
+#if ((GCC_MINOR == 9 && GCC_MAJOR == 4) || GCC_MAJOR >= 5)
 #include "tree.h"
 #include "stor-layout.h"
 #endif
@@ -79,7 +79,7 @@ extern "C" {
 
 #define DUMMY_STRINGOP_ALGS {libcall, {{-1, libcall}}}
 
-#if ((GCC_MINOR == 9 && GCC_MAJOR == 4) || GCC_MAJOR == 5)
+#if ((GCC_MINOR == 9 && GCC_MAJOR == 4) || GCC_MAJOR >= 5)
 
 struct stringop_algs ix86_salgs[2] = {{rep_prefix_1_byte,
                                        {{-1, rep_prefix_1_byte, 0},
@@ -2445,7 +2445,7 @@ contains_aligned_value_p (tree type)
   return false;
 }
 
-#else    /* ((GCC_MINOR == 9 && GCC_MAJOR == 4) || GCC_MAJOR == 5) */
+#else    /* ((GCC_MINOR == 9 && GCC_MAJOR == 4) || GCC_MAJOR >= 5) */
 
 const
 struct processor_costs ix86_size_cost = {/* costs for tuning for size */
@@ -4866,4 +4866,4 @@ contains_aligned_value_p (tree type)
   return false;
 }
 
-#endif   /* ((GCC_MINOR == 9 && GCC_MAJOR == 4) || GCC_MAJOR == 5) */
+#endif   /* ((GCC_MINOR == 9 && GCC_MAJOR == 4) || GCC_MAJOR >= 5) */
