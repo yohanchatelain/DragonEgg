@@ -79,7 +79,7 @@ static bool vfp_arg_homogeneous_aggregate_p(enum machine_mode mode, tree type,
                                             int *fdt_counts) {
   bool result = false;
   HOST_WIDE_INT bytes =
-      (mode == BLKmode) ? int_size_in_bytes(type) : (int) GET_MODE_SIZE(mode);
+      (mode == BLKmode) ? int_size_in_bytes(type) : (int)GET_MODE_SIZE(mode);
 
   if (type && isa<AGGREGATE_TYPE>(type)) {
     int i;
@@ -123,30 +123,31 @@ static bool vfp_arg_homogeneous_aggregate_p(enum machine_mode mode, tree type,
       break;
 
     case ARRAY_TYPE:
-        // Arrays are handled as small records.
-        {
-      int array_fdt_counts[ARM_FDT_MAX] = { 0 };
+      // Arrays are handled as small records.
+      {
+        int array_fdt_counts[ARM_FDT_MAX] = {0};
 
-      result = vfp_arg_homogeneous_aggregate_p(
-          TYPE_MODE(TREE_TYPE(type)), TREE_TYPE(type), array_fdt_counts);
+        result = vfp_arg_homogeneous_aggregate_p(
+            TYPE_MODE(TREE_TYPE(type)), TREE_TYPE(type), array_fdt_counts);
 
-      cnt = bytes / int_size_in_bytes(TREE_TYPE(type));
-      for (i = 0; i < ARM_FDT_MAX; ++i)
-        fdt_counts[i] += array_fdt_counts[i] * cnt;
+        cnt = bytes / int_size_in_bytes(TREE_TYPE(type));
+        for (i = 0; i < ARM_FDT_MAX; ++i)
+          fdt_counts[i] += array_fdt_counts[i] * cnt;
 
-      if (!result)
-        return false;
-    } break;
+        if (!result)
+          return false;
+      }
+      break;
 
     case UNION_TYPE:
     case QUAL_UNION_TYPE: {
       // Unions are similar to RECORD_TYPE.
-      int union_fdt_counts[ARM_FDT_MAX] = { 0 };
+      int union_fdt_counts[ARM_FDT_MAX] = {0};
 
       // Unions are not derived.
       gcc_assert(!TYPE_BINFO(type) || !BINFO_N_BASE_BINFOS(TYPE_BINFO(type)));
       for (field = TYPE_FIELDS(type); field; field = TREE_CHAIN(field)) {
-        int union_field_fdt_counts[ARM_FDT_MAX] = { 0 };
+        int union_field_fdt_counts[ARM_FDT_MAX] = {0};
 
         if (isa<FIELD_DECL>(field)) {
           if (TREE_TYPE(field) == error_mark_node)
@@ -215,17 +216,18 @@ static bool vfp_arg_homogeneous_aggregate_p(enum machine_mode mode, tree type,
     switch (TREE_CODE(type)) {
     case REAL_TYPE:
       idx = (TYPE_PRECISION(type) == 32)
-            ? ARM_FDT_FLOAT
-            : ((TYPE_PRECISION(type) == 64) ? ARM_FDT_DOUBLE : ARM_FDT_INVALID);
+                ? ARM_FDT_FLOAT
+                : ((TYPE_PRECISION(type) == 64) ? ARM_FDT_DOUBLE
+                                                : ARM_FDT_INVALID);
       cnt = 1;
       break;
 
     case COMPLEX_TYPE: {
       tree subtype = TREE_TYPE(type);
       idx = (TYPE_PRECISION(subtype) == 32)
-            ? ARM_FDT_FLOAT
-            : ((TYPE_PRECISION(subtype) == 64) ? ARM_FDT_DOUBLE
-                                               : ARM_FDT_INVALID);
+                ? ARM_FDT_FLOAT
+                : ((TYPE_PRECISION(subtype) == 64) ? ARM_FDT_DOUBLE
+                                                   : ARM_FDT_INVALID);
       cnt = 2;
     } break;
 
@@ -306,9 +308,10 @@ static unsigned count_num_words(std::vector<Type *> &ScalarElts) {
 // handling of arguments is that arguments larger than 32 bits are split
 // and padding arguments are added as necessary for alignment. This makes
 // the IL a bit more explicit about how arguments are handled.
-extern bool llvm_arm_try_pass_aggregate_custom(
-    tree type, std::vector<Type *> &ScalarElts, CallingConv::ID CC,
-    struct DefaultABIClient *C) {
+extern bool llvm_arm_try_pass_aggregate_custom(tree type,
+                                               std::vector<Type *> &ScalarElts,
+                                               CallingConv::ID CC,
+                                               struct DefaultABIClient *C) {
   if (CC != CallingConv::ARM_AAPCS && CC != CallingConv::C)
     return false;
 
@@ -372,8 +375,9 @@ extern bool llvm_arm_try_pass_aggregate_custom(
 // It also returns a vector of types that correspond to the registers used
 // for parameter passing. This only applies to AAPCS-VFP "homogeneous
 // aggregates" as specified in 4.3.5 of the AAPCS spec.
-bool llvm_arm_should_pass_aggregate_in_mixed_regs(
-    tree TreeType, Type *Ty, CallingConv::ID CC, std::vector<Type *> &Elts) {
+bool llvm_arm_should_pass_aggregate_in_mixed_regs(tree TreeType, Type *Ty,
+                                                  CallingConv::ID CC,
+                                                  std::vector<Type *> &Elts) {
   if (!llvm_arm_should_pass_or_return_aggregate_in_regs(TreeType, CC))
     return false;
 
@@ -467,7 +471,7 @@ bool llvm_arm_aggregate_partially_passed_in_regs(
       !(TARGET_AAPCS_BASED && TARGET_VFP && TARGET_HARD_FLOAT_ABI))
     return true;
 
-  bool SPRs[16] = { 0 }; // represents S0-S16
+  bool SPRs[16] = {0}; // represents S0-S16
 
   // Figure out which SPRs are available.
   if (!count_num_registers_uses(ScalarElts, SPRs))
@@ -501,10 +505,11 @@ Type *llvm_arm_aggr_type_for_struct_return(tree TreeType, CallingConv::ID CC) {
 // Extract SRCFIELDNO's ELEMENO value and store it in DEST's FIELDNO field's
 // ELEMENTNO.
 //
-static void llvm_arm_extract_mrv_array_element(
-    Value *Src, Value *Dest, unsigned SrcFieldNo, unsigned SrcElemNo,
-    unsigned DestFieldNo, unsigned DestElemNo, LLVMBuilder &Builder,
-    bool isVolatile) {
+static void
+llvm_arm_extract_mrv_array_element(Value *Src, Value *Dest, unsigned SrcFieldNo,
+                                   unsigned SrcElemNo, unsigned DestFieldNo,
+                                   unsigned DestElemNo, LLVMBuilder &Builder,
+                                   bool isVolatile) {
   Value *EVI = Builder.CreateExtractValue(Src, SrcFieldNo, "mrv_gr");
   const StructType *STy = cast<StructType>(Src->getType());
   llvm::Value *Idxs[3];
@@ -524,8 +529,9 @@ static void llvm_arm_extract_mrv_array_element(
 // llvm_arm_extract_multiple_return_value - Extract multiple values returned
 // by SRC and store them in DEST. It is expected that SRC and
 // DEST types are StructType, but they may not match.
-void llvm_arm_extract_multiple_return_value(
-    Value *Src, Value *Dest, bool isVolatile, LLVMBuilder &Builder) {
+void llvm_arm_extract_multiple_return_value(Value *Src, Value *Dest,
+                                            bool isVolatile,
+                                            LLVMBuilder &Builder) {
   const StructType *STy = cast<StructType>(Src->getType());
   unsigned NumElements = STy->getNumElements();
 
@@ -586,7 +592,7 @@ bool llvm_arm_should_pass_or_return_aggregate_in_regs(tree TreeType,
 
   // Alas, we can't use LLVM Types to figure this out because we need to
   // examine unions closely.  We'll have to walk the GCC TreeType.
-  int fdt_counts[ARM_FDT_MAX] = { 0 };
+  int fdt_counts[ARM_FDT_MAX] = {0};
   bool result = false;
   result = vfp_arg_homogeneous_aggregate_p(TYPE_MODE(TreeType), TreeType,
                                            fdt_counts);

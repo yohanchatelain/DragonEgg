@@ -34,42 +34,35 @@
 #include "llvm/Support/FormattedStream.h"
 
 // Macros to get the LLVM and GCC versions right
-#define LLVM_VERSION_GT(major, minor) \
+#define LLVM_ABOVE(major, minor)                                               \
   (LLVM_VERSION_MAJOR >= (major) && LLVM_VERSION_MINOR > minor)
 
-#define LLVM_VERSION_GE(major, minor) \
+#define LLVM_ABOVE_OR(major, minor)                                            \
   (LLVM_VERSION_MAJOR >= (major) && LLVM_VERSION_MINOR >= minor)
 
-#define LLVM_VERSION_LT(major, minor) \
+#define LLVM_BELOW(major, minor)                                               \
   (LLVM_VERSION_MAJOR <= (major) && LLVM_VERSION_MINOR < minor)
 
-#define LLVM_VERSION_LE(major, minor) \
+#define LLVM_BELOW_OR(major, minor)                                            \
   (LLVM_VERSION_MAJOR <= (major) && LLVM_VERSION_MINOR <= minor)
 
-#define LLVM_VERSION_EQ(major, minor) \
+#define LLVM_EQUAL(major, minor)                                               \
   (LLVM_VERSION_MAJOR == (major) && LLVM_VERSION_MINOR == minor)
 
-#define LLVM_VERSION_NE(major, minor) \
+#define LLVM_NOT(major, minor)                                                 \
   (LLVM_VERSION_MAJOR != (major) || LLVM_VERSION_MINOR != minor)
 
-#define GCC_GT(major, minor) \
-  (GCC_MAJOR >= (major) && GCC_MINOR > minor)
+#define GCC_ABOVE(major, minor) (GCC_MAJOR >= (major) && GCC_MINOR > minor)
 
-#define GCC_GE(major, minor) \
-  (GCC_MAJOR >= (major) && GCC_MINOR >= minor)
+#define GCC_ABOVE_OR(major, minor) (GCC_MAJOR >= (major) && GCC_MINOR >= minor)
 
-#define GCC_LT(major, minor) \
-  (GCC_MAJOR <= (major) && GCC_MINOR < minor)
+#define GCC_BELOW(major, minor) (GCC_MAJOR <= (major) && GCC_MINOR < minor)
 
-#define GCC_LE(major, minor) \
-  (GCC_MAJOR <= (major) && GCC_MINOR <= minor)
+#define GCC_BELOW_OR(major, minor) (GCC_MAJOR <= (major) && GCC_MINOR <= minor)
 
-#define GCC_EQ(major, minor) \
-  (GCC_MAJOR == (major) && GCC_MINOR == minor)
+#define GCC_EXACTLY(major, minor) (GCC_MAJOR == (major) && GCC_MINOR == minor)
 
-#define GCC_NE(major, minor) \
-  (GCC_MAJOR != (major) || GCC_MINOR != minor)
-
+#define GCC_NOT(major, minor) (GCC_MAJOR != (major) || GCC_MINOR != minor)
 
 struct basic_block_def;
 
@@ -102,16 +95,17 @@ template <typename> class TrackingVH;
 }
 class DebugInfo;
 
-#if LLVM_VERSION_GE(3,9)
+#if LLVM_ABOVE_OR(3, 9)
 typedef llvm::IRBuilder<llvm::TargetFolder> LLVMBuilder;
-#else 
+#else
 typedef llvm::IRBuilder<true, llvm::TargetFolder> LLVMBuilder;
 #endif
 
 // Global state.
 
 /// TheContext - This is the global context object that we use
-extern llvm::LLVMContext* TheContext;
+///
+extern llvm::LLVMContext TheContext;
 
 /// TheModule - This is the current global module that we are compiling into.
 ///
@@ -220,8 +214,10 @@ class MemRef {
 public:
   llvm::Value *Ptr;
   bool Volatile;
+
 private:
   unsigned char LogAlign;
+
 public:
   explicit MemRef() : Ptr(0), Volatile(false), LogAlign(0) {}
   explicit MemRef(llvm::Value *P, uint32_t A, bool V) : Ptr(P), Volatile(V) {
@@ -233,7 +229,7 @@ public:
   void setAlignment(uint32_t A) {
     // Forbid alignment 0 along with non-power-of-2 alignment values.
     assert(llvm::isPowerOf2_32(A) && "Alignment not a power of 2!");
-    LogAlign = (unsigned char) llvm::Log2_32(A);
+    LogAlign = (unsigned char)llvm::Log2_32(A);
   }
 };
 
@@ -248,14 +244,15 @@ class LValue : public MemRef {
 public:
   unsigned char BitStart;
   unsigned char BitSize;
+
 public:
   explicit LValue() : BitStart(255), BitSize(255) {}
   explicit LValue(MemRef &M) : MemRef(M), BitStart(255), BitSize(255) {}
   LValue(llvm::Value *P, uint32_t A, bool V = false)
       : MemRef(P, A, V), BitStart(255), BitSize(255) {}
   LValue(llvm::Value *P, uint32_t A, unsigned BSt, unsigned BSi, bool V = false)
-      : MemRef(P, A, V), BitStart((unsigned char) BSt),
-        BitSize((unsigned char) BSi) {
+      : MemRef(P, A, V), BitStart((unsigned char)BSt),
+        BitSize((unsigned char)BSi) {
     assert(BitStart == BSt && BitSize == BSi && "Bit values larger than 256?");
   }
 
@@ -297,16 +294,15 @@ class TreeToLLVM {
   llvm::DenseMap<basic_block_def *, llvm::BasicBlock *> BasicBlocks;
 
   /// LocalDecls - Map from local declarations to their associated LLVM values.
-  llvm::DenseMap<tree_node *, llvm::AssertingVH<llvm::Value> > LocalDecls;
+  llvm::DenseMap<tree_node *, llvm::AssertingVH<llvm::Value>> LocalDecls;
 
   /// PendingPhis - Phi nodes which have not yet been populated with operands.
   llvm::SmallVector<PhiRecord, 16> PendingPhis;
 
   // SSANames - Map from GCC ssa names to the defining LLVM value.
-  llvm::DenseMap<tree_node *, llvm::TrackingVH<llvm::Value> > SSANames;
+  llvm::DenseMap<tree_node *, llvm::TrackingVH<llvm::Value>> SSANames;
 
 public:
-
   //===---------------------- Local Declarations --------------------------===//
 
   /// DECL_LOCAL - Like DECL_LLVM, returns the LLVM declaration of a variable or
@@ -336,7 +332,6 @@ public:
 #define DECL_LOCAL_SET_P(NODE) (DECL_LOCAL_IF_SET(NODE) != NULL)
 
 private:
-
   //===---------------------- Exception Handling --------------------------===//
 
   /// NormalInvokes - Mapping from landing pad number to the set of invoke
@@ -429,8 +424,7 @@ public:
   /// DestLoc.
   void EmitAggregate(tree_node *exp, const MemRef &DestLoc);
 
-private : // Helper functions.
-
+private: // Helper functions.
   /// StartFunctionBody - Start the emission of 'fndecl', outputing all
   /// declarations for parameters and setting things up.
   void StartFunctionBody();
@@ -493,8 +487,7 @@ private : // Helper functions.
   /// function.
   bool EmitDebugInfo();
 
-private : // Helpers for exception handling.
-
+private: // Helpers for exception handling.
   /// getExceptionPtr - Return the local holding the exception pointer for the
   /// given exception handling region, creating it if necessary.
   llvm::AllocaInst *getExceptionPtr(int RegionNo);
@@ -517,7 +510,6 @@ private:
   void EmitTypeGcroot(llvm::Value *V);
 
 private:
-
   //===------------------ Render* - Convert GIMPLE to LLVM ----------------===//
 
   void RenderGIMPLE_ASM(gimple_statement_d *stmt);
@@ -546,7 +538,6 @@ private:
   void WriteScalarToLHS(tree_node *lhs, llvm::Value *Scalar);
 
 private:
-
   //===---------- EmitReg* - Convert register expression to LLVM ----------===//
 
   /// TriviallyTypeConvert - Convert the given value to the given type, assuming
@@ -628,15 +619,15 @@ private:
   llvm::Value *EmitReg_VEC_INTERLEAVE_LOW_EXPR(tree_node *op0, tree_node *op1);
 #endif
   llvm::Value *EmitReg_VEC_PACK_FIX_TRUNC_EXPR(tree_node *type, tree_node *op0,
-                                         tree_node *op1);
-  llvm::Value *
-  EmitReg_VEC_PACK_TRUNC_EXPR(tree_node *type, tree_node *op0, tree_node *op1);
+                                               tree_node *op1);
+  llvm::Value *EmitReg_VEC_PACK_TRUNC_EXPR(tree_node *type, tree_node *op0,
+                                           tree_node *op1);
   llvm::Value *EmitReg_VEC_WIDEN_MULT_HI_EXPR(tree_node *type, tree_node *op0,
-                                        tree_node *op1);
+                                              tree_node *op1);
   llvm::Value *EmitReg_VEC_WIDEN_MULT_LO_EXPR(tree_node *type, tree_node *op0,
-                                        tree_node *op1);
-  llvm::Value *
-  EmitReg_WIDEN_MULT_EXPR(tree_node *type, tree_node *op0, tree_node *op1);
+                                              tree_node *op1);
+  llvm::Value *EmitReg_WIDEN_MULT_EXPR(tree_node *type, tree_node *op0,
+                                       tree_node *op1);
 
   // Ternary expressions.
   llvm::Value *EmitReg_CondExpr(tree_node *op0, tree_node *op1, tree_node *op2);
@@ -658,7 +649,7 @@ private:
                           const MemRef *DestLoc, const llvm::AttributeSet &PAL);
   llvm::CallInst *EmitSimpleCall(llvm::StringRef CalleeName,
                                  tree_node *ret_type,
-                                 /* arguments */ ...) LLVM_END_WITH_NULL;
+                                 /* arguments */...) LLVM_END_WITH_NULL;
   llvm::Value *EmitFieldAnnotation(llvm::Value *FieldPtr, tree_node *FieldDecl);
 
   // Inline Assembly and Register Variables.
@@ -668,12 +659,13 @@ private:
   // Helpers for Builtin Function Expansion.
   llvm::Value *BuildVector(const std::vector<llvm::Value *> &Elts);
   llvm::Value *BuildVector(llvm::Value *Elt, ...);
-  llvm::Value *BuildVectorShuffle(llvm::Value *InVec1, llvm::Value *InVec2, ...);
+  llvm::Value *BuildVectorShuffle(llvm::Value *InVec1, llvm::Value *InVec2,
+                                  ...);
   llvm::Value *BuildBinaryAtomic(gimple_statement_d *stmt,
                                  llvm::AtomicRMWInst::BinOp Kind,
                                  unsigned PostOp = 0);
-  llvm::Value *
-  BuildCmpAndSwapAtomic(gimple_statement_d *stmt, unsigned Bits, bool isBool);
+  llvm::Value *BuildCmpAndSwapAtomic(gimple_statement_d *stmt, unsigned Bits,
+                                     bool isBool);
 
   // Builtin Function Expansion.
   bool EmitBuiltinCall(gimple_statement_d *stmt, tree_node *fndecl,
@@ -683,9 +675,8 @@ private:
                                        llvm::Value *&Result);
   bool EmitBuiltinUnaryOp(llvm::Value *InVal, llvm::Value *&Result,
                           llvm::Intrinsic::ID Id);
-  llvm::Value *
-  EmitBuiltinBitCountIntrinsic(gimple_statement_d *stmt,
-                               llvm::Intrinsic::ID Id);
+  llvm::Value *EmitBuiltinBitCountIntrinsic(gimple_statement_d *stmt,
+                                            llvm::Intrinsic::ID Id);
   llvm::Value *EmitBuiltinSQRT(gimple_statement_d *stmt);
   llvm::Value *EmitBuiltinPOWI(gimple_statement_d *stmt);
   llvm::Value *EmitBuiltinPOW(gimple_statement_d *stmt);

@@ -47,7 +47,7 @@ extern "C" {
 #include "vec.h"
 #include "input.h"
 #include "alias.h"
-#include "inchash.h"  
+#include "inchash.h"
 #include "double-int.h"
 #include "libiberty.h"
 #endif
@@ -66,8 +66,8 @@ using namespace llvm;
 
 /// concatIfNotEmpty - Concatenate the given strings if they are both non-empty.
 /// Otherwise return the empty string.
-static std::string
-concatIfNotEmpty(const std::string &Left, const std::string &Right) {
+static std::string concatIfNotEmpty(const std::string &Left,
+                                    const std::string &Right) {
   if (Left.empty() || Right.empty())
     return std::string();
   return Left + Right;
@@ -185,8 +185,11 @@ APInt getAPIntValue(const_tree exp, unsigned Bitwidth) {
 
   APInt DefaultValue;
   if (integerPartWidth == HOST_BITS_PER_WIDE_INT) {
-#if (GCC_MAJOR >= 5)  // NOTE this may be llvm stuff in which case the #if is incorrect
-    DefaultValue = APInt(DefaultWidth, llvm::makeArrayRef((const integerPart *)val.get_val(), 2));
+#if (GCC_MAJOR >=                                                              \
+     5) // NOTE this may be llvm stuff in which case the #if is incorrect
+    DefaultValue =
+        APInt(DefaultWidth,
+              llvm::makeArrayRef((const integerPart *)val.get_val(), 2));
 #else
     DefaultValue = APInt(DefaultWidth, /*numWords*/ 2, (integerPart *)&val);
 #endif
@@ -198,8 +201,8 @@ APInt getAPIntValue(const_tree exp, unsigned Bitwidth) {
            "Unsupported host integer width!");
     unsigned ShiftAmt = HOST_BITS_PER_WIDE_INT;
     integerPart Part =
-        integerPart((unsigned HOST_WIDE_INT) val.low) +
-        (integerPart((unsigned HOST_WIDE_INT) val.high) << ShiftAmt);
+        integerPart((unsigned HOST_WIDE_INT)val.low) +
+        (integerPart((unsigned HOST_WIDE_INT)val.high) << ShiftAmt);
     DefaultValue = APInt(DefaultWidth, Part);
 #endif
   }
@@ -249,7 +252,7 @@ bool isInt64(const_tree t, bool Unsigned) {
           // If the constant is signed and we want an unsigned result, check
           // that the value is non-negative.  If the constant is unsigned and
           // we want a signed result, check it fits in 63 bits.
-          (HOST_WIDE_INT) TREE_INT_CST_HIGH(t) >= 0);
+          (HOST_WIDE_INT)TREE_INT_CST_HIGH(t) >= 0);
 #endif
 }
 
@@ -259,10 +262,10 @@ bool isInt64(const_tree t, bool Unsigned) {
 /// overflowed constants.  These conditions can be checked by calling isInt64.
 uint64_t getInt64(const_tree t, bool Unsigned) {
   assert(isInt64(t, Unsigned) && "invalid constant!");
-  (void) Unsigned; // Otherwise unused if asserts off - avoid compiler warning.
-  unsigned HOST_WIDE_INT LO = (unsigned HOST_WIDE_INT) TREE_INT_CST_LOW(t);
+  (void)Unsigned; // Otherwise unused if asserts off - avoid compiler warning.
+  unsigned HOST_WIDE_INT LO = (unsigned HOST_WIDE_INT)TREE_INT_CST_LOW(t);
   if (HOST_BITS_PER_WIDE_INT == 64) {
-    return (uint64_t) LO;
+    return (uint64_t)LO;
   } else {
 #if (GCC_MAJOR >= 5)
     assert("Only 64-bit hosts supported!");
@@ -270,8 +273,8 @@ uint64_t getInt64(const_tree t, bool Unsigned) {
 #else
     assert(HOST_BITS_PER_WIDE_INT == 32 &&
            "Only 32- and 64-bit hosts supported!");
-    unsigned HOST_WIDE_INT HI = (unsigned HOST_WIDE_INT) TREE_INT_CST_HIGH(t);
-    return ((uint64_t) HI << 32) | (uint64_t) LO;
+    unsigned HOST_WIDE_INT HI = (unsigned HOST_WIDE_INT)TREE_INT_CST_HIGH(t);
+    return ((uint64_t)HI << 32) | (uint64_t)LO;
 #endif
   }
 }

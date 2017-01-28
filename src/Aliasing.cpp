@@ -55,7 +55,7 @@ extern "C" {
 #include "vec.h"
 #include "input.h"
 #include "alias.h"
-#include "inchash.h"  
+#include "inchash.h"
 #include "double-int.h"
 #include "libiberty.h"
 #endif
@@ -72,7 +72,7 @@ extern "C" {
 
 using namespace llvm;
 
-static LLVMContext &Context = *TheContext;
+static LLVMContext &Context = TheContext;
 
 /// getTBAARoot - Return the root of the TBAA tree for this compilation unit.
 static MDNode *getTBAARoot() {
@@ -134,7 +134,7 @@ MDNode *describeAliasSet(tree t) {
 
   // If there is a path from this node to any leaf node then it is not a leaf
   // node and can be discarded.
-  for (unsigned i = 0, e = (unsigned) LeafNodes.size(); i != e; ++i)
+  for (unsigned i = 0, e = (unsigned)LeafNodes.size(); i != e; ++i)
     if (alias_set_subset_of(LeafNodes[i], alias_set)) {
       NodeTags[alias_set] = 0;
       return 0;
@@ -143,15 +143,16 @@ MDNode *describeAliasSet(tree t) {
 
   // If there is a path from any leaf node to this one then no longer consider
   // that node to be a leaf.
-  for (unsigned i = (unsigned) LeafNodes.size(); i;) {
+  for (unsigned i = (unsigned)LeafNodes.size(); i;) {
     alias_set_type leaf_set = LeafNodes[--i];
     if (alias_set_subset_of(alias_set, leaf_set)) {
       LeafNodes.erase(LeafNodes.begin() + i);
       MDNode *&LeafTag = NodeTags[leaf_set];
       // It would be neat to strip the tbaa tag from any instructions using it
       // but it is simpler to just replace it with the root tag everywhere.
-// Line below commented by Arun to attempt compiling of dragonegg with gcc while ignoring llvm errors for the moment
-//      LeafTag->replaceAllUsesWith(getTBAARoot());
+      // Line below commented by Arun to attempt compiling of dragonegg with gcc
+      // while ignoring llvm errors for the moment
+      //      LeafTag->replaceAllUsesWith(getTBAARoot());
       LeafTag = 0;
     }
   }

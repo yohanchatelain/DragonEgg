@@ -28,6 +28,7 @@
 /// Range - Represents the interval [First, Last).
 template <typename T> class Range {
   T First, Last;
+
 public:
   Range() : First(0), Last(0) {}
   Range(T first, T last) : First(first), Last(last) {}

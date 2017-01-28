@@ -34,7 +34,9 @@
 #include "llvm/IR/DataLayout.h"
 #include "llvm/IR/LLVMContext.h"
 
-namespace llvm { class BasicBlock; }
+namespace llvm {
+class BasicBlock;
+}
 
 /// DefaultABIClient - This is a simple implementation of the ABI client
 /// interface that can be subclassed.
@@ -46,61 +48,64 @@ struct DefaultABIClient {
 
   /// HandleScalarResult - This callback is invoked if the function returns a
   /// simple scalar result value, which is of type RetTy.
-  virtual void HandleScalarResult(llvm::Type */*RetTy*/) {}
+  virtual void HandleScalarResult(llvm::Type * /*RetTy*/) {}
 
   /// HandleAggregateResultAsScalar - This callback is invoked if the function
   /// returns an aggregate value by bit converting it to the specified scalar
   /// type and returning that.  The bit conversion should start at byte Offset
   /// within the struct, and ScalarTy is not necessarily big enough to cover
   /// the entire struct.
-  virtual void HandleAggregateResultAsScalar(llvm::Type */*ScalarTy*/,
+  virtual void HandleAggregateResultAsScalar(llvm::Type * /*ScalarTy*/,
                                              unsigned /*Offset*/ = 0) {}
 
-  /// HandleAggregateResultAsAggregate - This callback is invoked if the function
+  /// HandleAggregateResultAsAggregate - This callback is invoked if the
+  /// function
   /// returns an aggregate value using multiple return values.
-  virtual void HandleAggregateResultAsAggregate(llvm::Type */*AggrTy*/) {}
+  virtual void HandleAggregateResultAsAggregate(llvm::Type * /*AggrTy*/) {}
 
   /// HandleAggregateShadowResult - This callback is invoked if the function
   /// returns an aggregate value by using a "shadow" first parameter, which is
   /// a pointer to the aggregate, of type PtrArgTy.  If RetPtr is set to true,
   /// the pointer argument itself is returned from the function.
-  virtual void HandleAggregateShadowResult(llvm::PointerType */*PtrArgTy*/,
+  virtual void HandleAggregateShadowResult(llvm::PointerType * /*PtrArgTy*/,
                                            bool /*RetPtr*/) {}
 
   /// HandleScalarShadowResult - This callback is invoked if the function
   /// returns a scalar value by using a "shadow" first parameter, which is a
   /// pointer to the scalar, of type PtrArgTy.  If RetPtr is set to true,
   /// the pointer argument itself is returned from the function.
-  virtual void HandleScalarShadowResult(llvm::PointerType */*PtrArgTy*/,
+  virtual void HandleScalarShadowResult(llvm::PointerType * /*PtrArgTy*/,
                                         bool /*RetPtr*/) {}
 
   /// HandleScalarArgument - This is the primary callback that specifies an
   /// LLVM argument to pass.  It is only used for first class types.
   /// If RealSize is non Zero then it specifies number of bytes to access
   /// from LLVMTy.
-  virtual void HandleScalarArgument(llvm::Type */*LLVMTy*/, tree_node */*type*/,
+  virtual void HandleScalarArgument(llvm::Type * /*LLVMTy*/,
+                                    tree_node * /*type*/,
                                     unsigned /*RealSize*/ = 0) {}
 
   /// HandleByInvisibleReferenceArgument - This callback is invoked if a pointer
   /// (of type PtrTy) to the argument is passed rather than the argument itself.
-  virtual void HandleByInvisibleReferenceArgument(llvm::Type */*PtrTy*/,
-                                                  tree_node */*type*/) {}
+  virtual void HandleByInvisibleReferenceArgument(llvm::Type * /*PtrTy*/,
+                                                  tree_node * /*type*/) {}
 
   /// HandleByValArgument - This callback is invoked if the aggregate function
   /// argument is passed by value.
-  virtual void HandleByValArgument(llvm::Type */*LLVMTy*/,
-                                   tree_node */*type*/) {}
+  virtual void HandleByValArgument(llvm::Type * /*LLVMTy*/,
+                                   tree_node * /*type*/) {}
 
   /// HandleFCAArgument - This callback is invoked if the aggregate function
   /// argument is passed by value as a first class aggregate.
-  virtual void HandleFCAArgument(llvm::Type */*LLVMTy*/, tree_node */*type*/) {}
+  virtual void HandleFCAArgument(llvm::Type * /*LLVMTy*/,
+                                 tree_node * /*type*/) {}
 
   /// EnterField - Called when we're about the enter the field of a struct
   /// or union.  FieldNo is the number of the element we are entering in the
   /// LLVM Struct, StructTy is the LLVM type of the struct we are entering.
-  virtual void EnterField(unsigned /*FieldNo*/, llvm::Type */*StructTy*/) {}
+  virtual void EnterField(unsigned /*FieldNo*/, llvm::Type * /*StructTy*/) {}
   virtual void ExitField() {}
-  virtual void HandlePad(llvm::Type */*LLVMTy*/) {}
+  virtual void HandlePad(llvm::Type * /*LLVMTy*/) {}
 };
 
 // LLVM_SHOULD_NOT_RETURN_COMPLEX_IN_MEMORY - A hook to allow
@@ -127,8 +132,9 @@ extern bool doNotUseShadowReturn(tree_node *type, tree_node *fndecl,
 /// struct (recursively) may include zero-length fields in addition to the
 /// single element that has data.  If rejectFatBitField, and the single element
 /// is a bitfield of a type that's bigger than the struct, return null anyway.
-extern tree_node *isSingleElementStructOrArray(
-    tree_node *type, bool ignoreZeroLength, bool rejectFatBitfield);
+extern tree_node *isSingleElementStructOrArray(tree_node *type,
+                                               bool ignoreZeroLength,
+                                               bool rejectFatBitfield);
 
 /// isZeroSizedStructOrUnion - Returns true if this is a struct or union
 /// which is zero bits wide.
@@ -137,25 +143,25 @@ extern bool isZeroSizedStructOrUnion(tree_node *type);
 // getLLVMScalarTypeForStructReturn - Return LLVM Type if TY can be
 // returned as a scalar, otherwise return NULL. This is the default
 // target independent implementation.
-inline llvm::Type *
-getLLVMScalarTypeForStructReturn(tree_node *type, unsigned *Offset) {
+inline llvm::Type *getLLVMScalarTypeForStructReturn(tree_node *type,
+                                                    unsigned *Offset) {
   llvm::Type *Ty = ConvertType(type);
   uint64_t Size = getDataLayout().getTypeAllocSize(Ty);
   *Offset = 0;
   if (Size == 0)
-    return llvm::Type::getVoidTy(*TheContext);
+    return llvm::Type::getVoidTy(TheContext);
   else if (Size == 1)
-    return llvm::Type::getInt8Ty(*TheContext);
+    return llvm::Type::getInt8Ty(TheContext);
   else if (Size == 2)
-    return llvm::Type::getInt16Ty(*TheContext);
+    return llvm::Type::getInt16Ty(TheContext);
   else if (Size <= 4)
-    return llvm::Type::getInt32Ty(*TheContext);
+    return llvm::Type::getInt32Ty(TheContext);
   else if (Size <= 8)
-    return llvm::Type::getInt64Ty(*TheContext);
+    return llvm::Type::getInt64Ty(TheContext);
   else if (Size <= 16)
-    return llvm::IntegerType::get(*TheContext, 128);
+    return llvm::IntegerType::get(TheContext, 128);
   else if (Size <= 32)
-    return llvm::IntegerType::get(*TheContext, 256);
+    return llvm::IntegerType::get(TheContext, 256);
 
   return NULL;
 }
@@ -163,7 +169,7 @@ getLLVMScalarTypeForStructReturn(tree_node *type, unsigned *Offset) {
 // getLLVMAggregateTypeForStructReturn - Return LLVM type if TY can be
 // returns as multiple values, otherwise return NULL. This is the default
 // target independent implementation.
-inline llvm::Type *getLLVMAggregateTypeForStructReturn(tree_node */*type*/) {
+inline llvm::Type *getLLVMAggregateTypeForStructReturn(tree_node * /*type*/) {
   return NULL;
 }
 
@@ -282,8 +288,8 @@ inline llvm::Type *getLLVMAggregateTypeForStructReturn(tree_node */*type*/) {
   llvm_default_extract_multiple_return_value((Src), (Dest), (V), (B))
 #endif
 inline void llvm_default_extract_multiple_return_value(
-    llvm::Value */*Src*/, llvm::Value */*Dest*/, bool /*isVolatile*/,
-    LLVMBuilder &/*Builder*/) {
+    llvm::Value * /*Src*/, llvm::Value * /*Dest*/, bool /*isVolatile*/,
+    LLVMBuilder & /*Builder*/) {
   llvm_unreachable("LLVM_EXTRACT_MULTIPLE_RETURN_VALUE is not implemented!");
 }
 
@@ -294,6 +300,7 @@ inline void llvm_default_extract_multiple_return_value(
 class DefaultABI {
 protected:
   DefaultABIClient &C;
+
 public:
   DefaultABI(DefaultABIClient &c);
 

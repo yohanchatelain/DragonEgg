@@ -55,7 +55,7 @@ extern "C" {
 #include "vec.h"
 #include "input.h"
 #include "alias.h"
-#include "inchash.h"  
+#include "inchash.h"
 #include "double-int.h"
 #include "libiberty.h"
 #endif
@@ -79,7 +79,7 @@ extern "C" {
 
 using namespace llvm;
 
-static LLVMContext &Context = *TheContext;
+static LLVMContext &Context = TheContext;
 
 /// SCCInProgress - Set of mutually dependent types currently being converted.
 static const std::vector<tree_node *> *SCCInProgress;
@@ -110,8 +110,7 @@ public:
   tree operator*() {
     return isa<TREE_LIST>(type_ref) ? TREE_VALUE(type_ref)
                                     : TREE_TYPE(type_ref);
-  }
-  ;
+  };
 
   /// Comparison operators.
   bool operator==(const ContainedTypeIterator &other) const {
@@ -235,15 +234,16 @@ public:
 uint64_t ArrayLengthOf(tree type) {
   assert(isa<ARRAY_TYPE>(type) && "Only for array types!");
   // Workaround for missing sanity checks in older versions of GCC.
-  if ((GCC_MINOR == 5 && GCC_MICRO < 3 && GCC_MAJOR == 4) || (GCC_MINOR == 6 && GCC_MICRO < 2 && GCC_MAJOR == 4))
+  if ((GCC_MINOR == 5 && GCC_MICRO < 3 && GCC_MAJOR == 4) ||
+      (GCC_MINOR == 6 && GCC_MICRO < 2 && GCC_MAJOR == 4))
     if (!TYPE_DOMAIN(type) || !TYPE_MAX_VALUE(TYPE_DOMAIN(type)))
       return NO_LENGTH;
   tree range = array_type_nelts(type); // The number of elements minus one.
   // Bail out if the array has variable or unknown length.
   if (!isInt64(range, false))
     return NO_LENGTH;
-  int64_t Range = (int64_t) getInt64(range, false);
-  return Range < 0 ? 0 : 1 + (uint64_t) Range;
+  int64_t Range = (int64_t)getInt64(range, false);
+  return Range < 0 ? 0 : 1 + (uint64_t)Range;
 }
 
 /// set_decl_index - Associate a non-negative number with the given GCC
@@ -272,10 +272,11 @@ int GetFieldIndex(tree decl, Type *Ty) {
   assert(isa<FIELD_DECL>(decl) && "Expected a FIELD_DECL!");
   // FIXME: The following test sometimes fails when compiling Fortran90 because
   // DECL_CONTEXT does not point to the containing type, but some other type!
-  //  assert(Ty == ConvertType(DECL_CONTEXT(decl)) && "Field not for this type!");
+  //  assert(Ty == ConvertType(DECL_CONTEXT(decl)) && "Field not for this
+  //  type!");
 
   // If we previously cached the field index, return the cached value.
-  unsigned Index = (unsigned) get_decl_index(decl);
+  unsigned Index = (unsigned)get_decl_index(decl);
   if (Index <= INT_MAX)
     return Index;
 
@@ -406,7 +407,7 @@ static Type *CheckTypeConversion(tree type, Type *Ty) {
   }
 #endif
 
-  (void) type;
+  (void)type;
   return Ty;
 }
 
@@ -489,8 +490,8 @@ Type *getRegType(tree type) {
     // void* -> byte*
     unsigned AS = TYPE_ADDR_SPACE(type);
     return isa<VOID_TYPE>(TREE_TYPE(type))
-           ? GetUnitPointerType(Context, AS)
-           : ConvertType(TREE_TYPE(type))->getPointerTo(AS);
+               ? GetUnitPointerType(Context, AS)
+               : ConvertType(TREE_TYPE(type))->getPointerTo(AS);
   }
 
   case REAL_TYPE:
@@ -504,8 +505,8 @@ Type *getRegType(tree type) {
 #ifdef TARGET_POWERPC
       return Type::getPPC_FP128Ty(Context);
 #else
-    // IEEE quad precision.
-    return Type::getFP128Ty(Context);
+      // IEEE quad precision.
+      return Type::getFP128Ty(Context);
 #endif
     debug_tree(type);
     llvm_unreachable("Unknown FP type!");
@@ -513,7 +514,6 @@ Type *getRegType(tree type) {
   case VECTOR_TYPE:
     return VectorType::get(getRegType(TREE_TYPE(type)),
                            TYPE_VECTOR_SUBPARTS(type));
-
   }
 }
 
@@ -561,6 +561,7 @@ class FunctionTypeConversion : public DefaultABIClient {
   unsigned Offset;
   bool isShadowRet;
   bool KNRPromotion;
+
 public:
   FunctionTypeConversion(Type *&retty, SmallVectorImpl<Type *> &AT,
                          CallingConv::ID &CC, bool KNR)
@@ -587,7 +588,8 @@ public:
     this->Offset = Off;
   }
 
-  /// HandleAggregateResultAsAggregate - This callback is invoked if the function
+  /// HandleAggregateResultAsAggregate - This callback is invoked if the
+  /// function
   /// returns an aggregate value using multiple return values.
   void HandleAggregateResultAsAggregate(Type *AggrTy) { RetTy = AggrTy; }
 
@@ -674,9 +676,10 @@ static void HandleArgumentExtension(tree ArgTy, AttrBuilder &AttrBuilder) {
 /// for the function.  This method takes the DECL_ARGUMENTS list (Args), and
 /// fills in Result with the argument types for the function.  It returns the
 /// specified result type for the function.
-FunctionType *ConvertArgListToFnType(
-    tree type, ArrayRef<tree> Args, tree static_chain, bool KNRPromotion,
-    CallingConv::ID &CallingConv, AttributeSet &PAL) {
+FunctionType *ConvertArgListToFnType(tree type, ArrayRef<tree> Args,
+                                     tree static_chain, bool KNRPromotion,
+                                     CallingConv::ID &CallingConv,
+                                     AttributeSet &PAL) {
   tree ReturnType = TREE_TYPE(type);
   SmallVector<Type *, 8> ArgTys;
   Type *RetTy(Type::getVoidTy(Context));
@@ -746,9 +749,9 @@ FunctionType *ConvertArgListToFnType(
   return FunctionType::get(RetTy, ArgTys, false);
 }
 
-FunctionType *
-ConvertFunctionType(tree type, tree decl, tree static_chain,
-                    CallingConv::ID &CallingConv, AttributeSet &PAL) {
+FunctionType *ConvertFunctionType(tree type, tree decl, tree static_chain,
+                                  CallingConv::ID &CallingConv,
+                                  AttributeSet &PAL) {
   Type *RetTy = Type::getVoidTy(Context);
   SmallVector<Type *, 8> ArgTypes;
   FunctionTypeConversion Client(RetTy, ArgTypes, CallingConv,
@@ -1027,7 +1030,7 @@ public:
   }
 
   // Copy assignment operator.
-  TypedRange &operator=(const TypedRange & other) {
+  TypedRange &operator=(const TypedRange &other) {
     R = other.R;
     Ty = other.Ty;
     Starts = other.Starts;
@@ -1067,7 +1070,7 @@ public:
     // If the type is something like i17 then round it up to a multiple of a
     // byte.  This is not needed for correctness, but helps the optimizers.
     if ((Ty->getPrimitiveSizeInBits() % BITS_PER_UNIT) != 0) {
-#if LLVM_VERSION_LT(3,9)
+#if LLVM_BELOW(3, 9)
       unsigned BitWidth =
           RoundUpToAlignment(Ty->getPrimitiveSizeInBits(), BITS_PER_UNIT);
 #else
@@ -1534,10 +1537,8 @@ class RecursiveTypeIterator {
   explicit RecursiveTypeIterator(const ContainedTypeIterator &i) : I(i) {}
 
 public:
-
   /// Dereference operator returning the main variant of the contained type.
-  tree operator*() { return TYPE_MAIN_VARIANT(*I); }
-  ;
+  tree operator*() { return TYPE_MAIN_VARIANT(*I); };
 
   /// Comparison operators.
   bool operator==(const RecursiveTypeIterator &other) const {

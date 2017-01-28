@@ -144,16 +144,15 @@ bool isBitfield(const_tree field_decl);
 // Compatibility hacks for older versions of GCC.
 #if (GCC_MAJOR == 4 && GCC_MINOR < 8)
 // Supported allocation types:
-struct va_gc {
-}; // Allocation uses ggc_alloc.
+struct va_gc {}; // Allocation uses ggc_alloc.
 
 // Fake vector class specialized below.
-template <typename T, typename A> class vec {
-};
+template <typename T, typename A> class vec {};
 
 #define INSTANTIATE_VECTOR(TT)                                                 \
   template <> class vec<TT, va_gc> {                                           \
     VEC(TT, gc) & v;                                                           \
+                                                                               \
   public:                                                                      \
     vec(VEC(TT, gc) & V) : v(V) {}                                             \
                                                                                \
@@ -166,6 +165,6 @@ template <typename T, typename A> class vec {
   }
 #endif
 
-#endif    /* GCC_MAJOR < 5 */
+#endif /* GCC_MAJOR < 5 */
 
 #endif /* DRAGONEGG_TREES_H */

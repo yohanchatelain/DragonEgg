@@ -56,7 +56,7 @@ extern "C" {
 #include "vec.h"
 #include "input.h"
 #include "alias.h"
-#include "inchash.h"  
+#include "inchash.h"
 #include "double-int.h"
 #endif
 #include "tm.h"
@@ -84,7 +84,7 @@ extern "C" {
 
 using namespace llvm;
 
-static LLVMContext &Context = *TheContext;
+static LLVMContext &Context = TheContext;
 
 // Forward declarations.
 static Constant *ConvertInitializerImpl(tree, TargetFolder &);
@@ -153,7 +153,7 @@ public:
   bool empty() const { return R.empty(); }
 
   /// getBitWidth - Return the number of bits in the range.
-  unsigned getBitWidth() const { return (unsigned) R.getWidth(); }
+  unsigned getBitWidth() const { return (unsigned)R.getWidth(); }
 
   /// getRange - Return the range of bits in this slice.
   SignedRange getRange() const { return R; }
@@ -187,7 +187,7 @@ BitSlice BitSlice::ExtendRange(SignedRange r, TargetFolder &Folder) const {
   if (R == r)
     return *this;
   assert(!r.empty() && "Empty ranges did not evaluate as equal?");
-  Type *ExtTy = IntegerType::get(Context, (unsigned) r.getWidth());
+  Type *ExtTy = IntegerType::get(Context, (unsigned)r.getWidth());
   // If the slice contains no bits then every bit of the extension is zero.
   if (empty())
     return BitSlice(r, Constant::getNullValue(ExtTy));
@@ -197,11 +197,11 @@ BitSlice BitSlice::ExtendRange(SignedRange r, TargetFolder &Folder) const {
   unsigned deltaFirst = (unsigned)(R.getFirst() - r.getFirst());
   unsigned deltaLast = (unsigned)(r.getLast() - R.getLast());
   if (BYTES_BIG_ENDIAN && deltaLast) {
-    (void) deltaFirst; // Avoid unused variable warning.
+    (void)deltaFirst; // Avoid unused variable warning.
     Constant *ShiftAmt = ConstantInt::get(C->getType(), deltaLast);
     C = Folder.CreateShl(C, ShiftAmt);
   } else if (!BYTES_BIG_ENDIAN && deltaFirst) {
-    (void) deltaLast; // Avoid unused variable warning.
+    (void)deltaLast; // Avoid unused variable warning.
     Constant *ShiftAmt = ConstantInt::get(C->getType(), deltaFirst);
     C = Folder.CreateShl(C, ShiftAmt);
   }
@@ -220,7 +220,7 @@ Constant *BitSlice::getBits(SignedRange r, TargetFolder &Folder) const {
   // Quick exit if the desired range matches that of the slice.
   if (R == r)
     return Contents;
-  Type *RetTy = IntegerType::get(Context, (unsigned) r.getWidth());
+  Type *RetTy = IntegerType::get(Context, (unsigned)r.getWidth());
   // If the slice contains no bits then every returned bit is undefined.
   if (empty())
     return UndefValue::get(RetTy);
@@ -272,16 +272,16 @@ BitSlice BitSlice::ReduceRange(SignedRange r, TargetFolder &Folder) const {
   unsigned deltaFirst = (unsigned)(r.getFirst() - R.getFirst());
   unsigned deltaLast = (unsigned)(R.getLast() - r.getLast());
   if (BYTES_BIG_ENDIAN && deltaLast) {
-    (void) deltaFirst; // Avoid unused variable warning.
+    (void)deltaFirst; // Avoid unused variable warning.
     Constant *ShiftAmt = ConstantInt::get(C->getType(), deltaLast);
     C = Folder.CreateLShr(C, ShiftAmt);
   } else if (!BYTES_BIG_ENDIAN && deltaFirst) {
-    (void) deltaLast; // Avoid unused variable warning.
+    (void)deltaLast; // Avoid unused variable warning.
     Constant *ShiftAmt = ConstantInt::get(C->getType(), deltaFirst);
     C = Folder.CreateLShr(C, ShiftAmt);
   }
   // Truncate to the new type.
-  Type *RedTy = IntegerType::get(Context, (unsigned) r.getWidth());
+  Type *RedTy = IntegerType::get(Context, (unsigned)r.getWidth());
   C = Folder.CreateTruncOrBitCast(C, RedTy);
   return BitSlice(r, C);
 }
@@ -424,8 +424,8 @@ static BitSlice ViewAsBits(Constant *C, SignedRange R, TargetFolder &Folder) {
 /// same constant as you would get by storing the bits of 'C' to memory (with
 /// the first bit stored being 'StartingBit') and then loading out a (constant)
 /// value of type 'Ty' from the stored to memory location.
-static Constant *
-InterpretAsType(Constant *C, Type *Ty, int StartingBit, TargetFolder &Folder) {
+static Constant *InterpretAsType(Constant *C, Type *Ty, int StartingBit,
+                                 TargetFolder &Folder) {
   // Efficient handling for some common cases.
   if (C->getType() == Ty)
     return C;
@@ -454,8 +454,9 @@ InterpretAsType(Constant *C, Type *Ty, int StartingBit, TargetFolder &Folder) {
     // the end on little-endian machines.
     Bits = Bits.Displace(-StartingBit);
     return BYTES_BIG_ENDIAN
-           ? Bits.getBits(SignedRange(StoreSize - BitWidth, StoreSize), Folder)
-           : Bits.getBits(SignedRange(0, BitWidth), Folder);
+               ? Bits.getBits(SignedRange(StoreSize - BitWidth, StoreSize),
+                              Folder)
+               : Bits.getBits(SignedRange(0, BitWidth), Folder);
   }
 
   case Type::PointerTyID: {
@@ -524,8 +525,9 @@ InterpretAsType(Constant *C, Type *Ty, int StartingBit, TargetFolder &Folder) {
 
 /// ExtractRegisterFromConstantImpl - Implementation of
 /// ExtractRegisterFromConstant.
-static Constant *ExtractRegisterFromConstantImpl(
-    Constant *C, tree type, int StartingByte, TargetFolder &Folder) {
+static Constant *ExtractRegisterFromConstantImpl(Constant *C, tree type,
+                                                 int StartingByte,
+                                                 TargetFolder &Folder) {
   // NOTE: Needs to be kept in sync with getRegType and RepresentAsMemory.
   int StartingBit = StartingByte * BITS_PER_UNIT;
   switch (TREE_CODE(type)) {
@@ -552,9 +554,9 @@ static Constant *ExtractRegisterFromConstantImpl(
     tree elt_type = main_type(type);
     unsigned Stride = GET_MODE_BITSIZE(TYPE_MODE(elt_type));
     Constant *Vals[2] = {
-      ExtractRegisterFromConstantImpl(C, elt_type, StartingBit, Folder),
-      ExtractRegisterFromConstantImpl(C, elt_type, StartingBit + Stride, Folder)
-    };
+        ExtractRegisterFromConstantImpl(C, elt_type, StartingBit, Folder),
+        ExtractRegisterFromConstantImpl(C, elt_type, StartingBit + Stride,
+                                        Folder)};
     return ConstantStruct::getAnon(Vals);
   }
 
@@ -581,7 +583,6 @@ static Constant *ExtractRegisterFromConstantImpl(
           C, elt_type, StartingBit + i * Stride, Folder);
     return ConstantVector::get(Vals);
   }
-
   }
 }
 
@@ -590,9 +591,9 @@ static Constant *ExtractRegisterFromConstantImpl(
 /// getRegType, and is what you would get by storing the constant to memory and
 /// using LoadRegisterFromMemory to load a register value back out starting from
 /// byte StartingByte.
-Constant *
-ExtractRegisterFromConstant(Constant *C, tree type, int StartingByte) {
-#if LLVM_VERSION_LE(3,6)
+Constant *ExtractRegisterFromConstant(Constant *C, tree type,
+                                      int StartingByte) {
+#if LLVM_BELOW_OR(3, 6)
   TargetFolder Folder(&getDataLayout());
 #else
   TargetFolder Folder(getDataLayout());
@@ -615,8 +616,8 @@ static Constant *getAsRegister(tree exp, TargetFolder &Folder) {
 /// to the given GCC type) into an in-memory constant.  The result has the
 /// property that applying ExtractRegisterFromConstant to it gives you the
 /// original in-register constant back again.
-static Constant *
-RepresentAsMemory(Constant *C, tree type, TargetFolder &Folder) {
+static Constant *RepresentAsMemory(Constant *C, tree type,
+                                   TargetFolder &Folder) {
   // NOTE: Needs to be kept in sync with ExtractRegisterFromConstant.
   assert(C->getType() == getRegType(type) && "Constant has wrong type!");
   Constant *Result;
@@ -648,7 +649,7 @@ RepresentAsMemory(Constant *C, tree type, TargetFolder &Folder) {
     Constant *Imag = Folder.CreateExtractValue(C, 1);
     Real = RepresentAsMemory(Real, elt_type, Folder);
     Imag = RepresentAsMemory(Imag, elt_type, Folder);
-    Constant *Vals[2] = { Real, Imag };
+    Constant *Vals[2] = {Real, Imag};
     Result = ConstantStruct::getAnon(Vals);
     break;
   }
@@ -684,7 +685,6 @@ RepresentAsMemory(Constant *C, tree type, TargetFolder &Folder) {
     Result = ConstantStruct::getAnon(Vals);
     break;
   }
-
   }
 
   // Ensure that the result satisfies the guarantees given by ConvertInitializer
@@ -704,8 +704,8 @@ RepresentAsMemory(Constant *C, tree type, TargetFolder &Folder) {
 /// and pointless type changes in the IR, and for making explicit the implicit
 /// scalar casts that GCC allows in "assignments" such as initializing a record
 /// field.
-static Constant *
-ConvertInitializerWithCast(tree exp, tree type, TargetFolder &Folder) {
+static Constant *ConvertInitializerWithCast(tree exp, tree type,
+                                            TargetFolder &Folder) {
   // Convert the initializer.  Note that the type of the returned value may be
   // pretty much anything.
   Constant *C = ConvertInitializerImpl(exp, Folder);
@@ -751,9 +751,8 @@ static Constant *ConvertCST(tree exp, TargetFolder &) {
   SmallVector<uint8_t, 16> Buffer(SizeInChars);
   unsigned CharsWritten = native_encode_expr(exp, &Buffer[0], SizeInChars);
   assert(CharsWritten == SizeInChars && "Failed to fully encode expression!");
-  (void)
-      CharsWritten; // Avoid unused variable warning when assertions disabled.
-                    // Turn it into an LLVM byte array.
+  (void)CharsWritten; // Avoid unused variable warning when assertions disabled.
+                      // Turn it into an LLVM byte array.
   return ConstantDataArray::get(Context, Buffer);
 }
 
@@ -763,7 +762,7 @@ static Constant *ConvertSTRING_CST(tree exp, TargetFolder &) {
   ArrayType *StrTy = cast<ArrayType>(ConvertType(TREE_TYPE(exp)));
   Type *ElTy = StrTy->getElementType();
 
-  unsigned Len = (unsigned) TREE_STRING_LENGTH(exp);
+  unsigned Len = (unsigned)TREE_STRING_LENGTH(exp);
 
   std::vector<Constant *> Elts;
   if (ElTy->isIntegerTy(8)) {
@@ -855,9 +854,9 @@ static Constant *ConvertArrayCONSTRUCTOR(tree exp, TargetFolder &Folder) {
   // Resize to the number of array elements if known.  This ensures that every
   // element will be at least default initialized even if no initial value is
   // given for it.
-  uint64_t TypeElts =
-      isa<ARRAY_TYPE>(init_type) ? ArrayLengthOf(init_type)
-                                 : TYPE_VECTOR_SUBPARTS(init_type);
+  uint64_t TypeElts = isa<ARRAY_TYPE>(init_type)
+                          ? ArrayLengthOf(init_type)
+                          : TYPE_VECTOR_SUBPARTS(init_type);
   if (TypeElts != NO_LENGTH)
     Elts.resize(TypeElts);
 
@@ -882,8 +881,8 @@ static Constant *ConvertArrayCONSTRUCTOR(tree exp, TargetFolder &Folder) {
       unsigned PadBits = EltSize - ValSize;
       assert(PadBits % BITS_PER_UNIT == 0 && "Non-unit type size?");
       unsigned Units = PadBits / BITS_PER_UNIT;
-      Constant *PaddedElt[] = { Val,
-                                getDefaultValue(GetUnitType(Context, Units)) };
+      Constant *PaddedElt[] = {Val,
+                               getDefaultValue(GetUnitType(Context, Units))};
 
       Val = ConstantStruct::getAnon(PaddedElt);
     }
@@ -912,7 +911,7 @@ static Constant *ConvertArrayCONSTRUCTOR(tree exp, TargetFolder &Folder) {
       FirstIndex = tree_low_cst(first, 1);
       LastIndex = tree_low_cst(last, 1);
 #else
-      assert(tree_fits_uhwi_p(first)  && tree_fits_uhwi_p(last) &&
+      assert(tree_fits_uhwi_p(first) && tree_fits_uhwi_p(last) &&
              "Unknown range_expr!");
       FirstIndex = tree_to_uhwi(first);
       LastIndex = tree_to_uhwi(last);
@@ -1062,18 +1061,18 @@ class FieldContents {
     // If the constant is wider than the range then it needs to be truncated
     // before being passed to the user.
     unsigned AllocBits = DL.getTypeAllocSizeInBits(Ty);
-    return AllocBits <= (unsigned) R.getWidth();
+    return AllocBits <= (unsigned)R.getWidth();
   }
 
 public:
   /// get - Fill the range [first, last) with the given constant.
-  static FieldContents
-  get(int first, int last, Constant *c, TargetFolder &folder) {
+  static FieldContents get(int first, int last, Constant *c,
+                           TargetFolder &folder) {
     return FieldContents(SignedRange(first, last), c, first, &folder);
   }
 
   // Copy assignment operator.
-  FieldContents &operator=(const FieldContents & other) {
+  FieldContents &operator=(const FieldContents &other) {
     R = other.R;
     C = other.C;
     Starts = other.Starts;
@@ -1116,7 +1115,7 @@ public:
     if ((C->getType()->getPrimitiveSizeInBits() % BITS_PER_UNIT) != 0) {
       Type *Ty = C->getType();
       assert(Ty->isIntegerTy() && "Non-integer type with non-byte size!");
-#if LLVM_VERSION_LT(3,9)
+#if LLVM_BELOW(3, 9)
       unsigned BitWidth =
           RoundUpToAlignment(Ty->getPrimitiveSizeInBits(), BITS_PER_UNIT);
 #else
@@ -1257,8 +1256,8 @@ static Constant *ConvertRecordCONSTRUCTOR(tree exp, TargetFolder &Folder) {
     // If a size was specified for the field then use it.  Otherwise take the
     // size from the initial value.
     uint64_t BitWidth = isInt64(DECL_SIZE(field), true)
-                        ? getInt64(DECL_SIZE(field), true)
-                        : DL.getTypeAllocSizeInBits(Init->getType());
+                            ? getInt64(DECL_SIZE(field), true)
+                            : DL.getTypeAllocSizeInBits(Init->getType());
     uint64_t LastBit = FirstBit + BitWidth;
 
     // Set the bits occupied by the field to the initial value.
@@ -1407,10 +1406,10 @@ static Constant *ConvertPOINTER_PLUS_EXPR(tree exp, TargetFolder &Folder) {
 
   // Convert the pointer into an i8* and add the offset to it.
   Ptr = Folder.CreateBitCast(Ptr, GetUnitPointerType(Context));
-#if LLVM_VERSION_LE(3,6)
+#if LLVM_BELOW_OR(3, 6)
   Constant *Result = POINTER_TYPE_OVERFLOW_UNDEFINED
-                         ? Folder.CreateInBoundsGetElementPtr(nullptr, Ptr, Idx)
-                         : Folder.CreateGetElementPtr(nullptr, Ptr, Idx);
+                         ? Folder.CreateInBoundsGetElementPtr(Ptr, Idx)
+                         : Folder.CreateGetElementPtr(Ptr, Idx);
 #else
   Constant *Result = POINTER_TYPE_OVERFLOW_UNDEFINED
                          ? Folder.CreateInBoundsGetElementPtr(nullptr, Ptr, Idx)
@@ -1518,7 +1517,7 @@ static Constant *ConvertInitializerImpl(tree exp, TargetFolder &Folder) {
 /// initial value may exceed the alloc size of the LLVM memory type generated
 /// for the GCC type (see ConvertType); it is never smaller than the alloc size.
 Constant *ConvertInitializer(tree exp) {
-#if LLVM_VERSION_LE(3,6)
+#if LLVM_BELOW_OR(3, 6)
   TargetFolder Folder(&getDataLayout());
 #else
   TargetFolder Folder(getDataLayout());
@@ -1550,10 +1549,10 @@ static Constant *AddressOfSimpleConstant(tree exp, TargetFolder &Folder) {
   align = CONSTANT_ALIGNMENT(exp, align);
 #endif
   Slot->setAlignment(align);
-  // Allow identical constants to be merged if the user allowed it.
-  // FIXME: maybe this flag should be set unconditionally, and instead the
-  // ConstantMerge pass should be disabled if flag_merge_constants is zero.
-#if LLVM_VERSION_EQ(3,9)
+// Allow identical constants to be merged if the user allowed it.
+// FIXME: maybe this flag should be set unconditionally, and instead the
+// ConstantMerge pass should be disabled if flag_merge_constants is zero.
+#if LLVM_EQUAL(3, 9)
   Slot->setUnnamedAddr(GlobalValue::UnnamedAddr::Global);
 #else
   Slot->setUnnamedAddr(flag_merge_constants);
@@ -1591,10 +1590,10 @@ static Constant *AddressOfARRAY_REF(tree exp, TargetFolder &Folder) {
   Type *EltTy = ConvertType(main_type(main_type(array)));
   ArrayAddr = Folder.CreateBitCast(ArrayAddr, EltTy->getPointerTo());
 
-#if LLVM_VERSION_LE(3,6)
+#if LLVM_BELOW_OR(3, 6)
   return POINTER_TYPE_OVERFLOW_UNDEFINED
-         ? Folder.CreateInBoundsGetElementPtr(ArrayAddr, IndexVal)
-         : Folder.CreateGetElementPtr(ArrayAddr, IndexVal);
+             ? Folder.CreateInBoundsGetElementPtr(ArrayAddr, IndexVal)
+             : Folder.CreateGetElementPtr(ArrayAddr, IndexVal);
 #else
   return POINTER_TYPE_OVERFLOW_UNDEFINED
              ? Folder.CreateInBoundsGetElementPtr(nullptr, ArrayAddr, IndexVal)
@@ -1629,7 +1628,7 @@ static Constant *AddressOfCOMPONENT_REF(tree exp, TargetFolder &Folder) {
     Offset =
         Folder.CreateAdd(Offset, ConstantInt::get(Offset->getType(), Units));
     BitStart -= Units * BITS_PER_UNIT;
-    (void) BitStart;
+    (void)BitStart;
   }
   assert(BitStart == 0 &&
          "It's a bitfield reference or we didn't get to the field!");
@@ -1637,18 +1636,18 @@ static Constant *AddressOfCOMPONENT_REF(tree exp, TargetFolder &Folder) {
   Type *UnitPtrTy = GetUnitPointerType(Context);
   Constant *StructAddr = AddressOfImpl(TREE_OPERAND(exp, 0), Folder);
   Constant *FieldPtr = Folder.CreateBitCast(StructAddr, UnitPtrTy);
-#if LLVM_VERSION_LE(3,6)
+#if LLVM_BELOW_OR(3, 6)
   FieldPtr = Folder.CreateInBoundsGetElementPtr(FieldPtr, Offset);
-#else 
+#else
   FieldPtr = Folder.CreateInBoundsGetElementPtr(nullptr, FieldPtr, Offset);
 #endif
-  
+
   return FieldPtr;
 }
 
 /// AddressOfCOMPOUND_LITERAL_EXPR - Return the address of a compound literal.
-static Constant *
-AddressOfCOMPOUND_LITERAL_EXPR(tree exp, TargetFolder &Folder) {
+static Constant *AddressOfCOMPOUND_LITERAL_EXPR(tree exp,
+                                                TargetFolder &Folder) {
   tree decl = DECL_EXPR_DECL(COMPOUND_LITERAL_EXPR_DECL_EXPR(exp));
   return AddressOfImpl(decl, Folder);
 }
@@ -1694,8 +1693,8 @@ static Constant *AddressOfMEM_REF(tree exp, TargetFolder &Folder) {
   Addr = Folder.CreateBitCast(Addr, GetUnitPointerType(Context));
   APInt Delta = getAPIntValue(TREE_OPERAND(exp, 1));
   Constant *Offset = ConstantInt::get(Context, Delta);
-  // The address is always inside the referenced object, so "inbounds".
-#if LLVM_VERSION_LE(3,6)
+// The address is always inside the referenced object, so "inbounds".
+#if LLVM_BELOW_OR(3, 6)
   return Folder.CreateInBoundsGetElementPtr(Addr, Offset);
 #else
   return Folder.CreateInBoundsGetElementPtr(nullptr, Addr, Offset);
@@ -1770,7 +1769,7 @@ static Constant *AddressOfImpl(tree exp, TargetFolder &Folder) {
 /// type of the pointee is the memory type that corresponds to the type of exp
 /// (see ConvertType).
 Constant *AddressOf(tree exp) {
-#if LLVM_VERSION_LE(3,6)
+#if LLVM_BELOW_OR(3, 6)
   TargetFolder Folder(&getDataLayout());
 #else
   TargetFolder Folder(getDataLayout());

@@ -44,7 +44,7 @@ class Function;
 class Module;
 }
 
-#if LLVM_VERSION_LE(3,6)
+#if LLVM_BELOW_OR(3, 6)
 
 /// DebugInfo - This class gathers all debug information during compilation and
 /// is responsible for emitting to llvm globals or pass directly to the backend.
@@ -65,7 +65,7 @@ private:
   const char *PrevFullPath; // Previous location file encountered.
   int CurLineNo;            // Previous location line# encountered.
   int PrevLineNo;           // Previous location line# encountered.
-  llvm::BasicBlock *PrevBB;       // Last basic block encountered.
+  llvm::BasicBlock *PrevBB; // Last basic block encountered.
 
   std::map<tree_node *, llvm::TrackingMDRef> TypeCache;
   // Cache of previously constructed
@@ -162,11 +162,12 @@ public:
 private:
   /// CreateDerivedType - Create a derived type like const qualified type,
   /// pointer, typedef, etc.
-  llvm::DIDerivedType CreateDerivedType(
-      unsigned Tag, llvm::DIDescriptor Context, llvm::StringRef Name,
-      llvm::DIFile F, unsigned LineNumber, uint64_t SizeInBits,
-      uint64_t AlignInBits, uint64_t OffsetInBits, unsigned Flags,
-      llvm::DIType DerivedFrom);
+  llvm::DIDerivedType
+  CreateDerivedType(unsigned Tag, llvm::DIDescriptor Context,
+                    llvm::StringRef Name, llvm::DIFile F, unsigned LineNumber,
+                    uint64_t SizeInBits, uint64_t AlignInBits,
+                    uint64_t OffsetInBits, unsigned Flags,
+                    llvm::DIType DerivedFrom);
 
   /// CreateCompositeType - Create a composite type like array, struct, etc.
   llvm::DICompositeType CreateCompositeType(
@@ -189,26 +190,24 @@ private:
   /// CreateSubprogramDefinition - Create new subprogram descriptor for the
   /// given declaration.
   llvm::DISubprogram
-  CreateSubprogramDefinition(llvm::DISubprogram &SPDeclaration,
-                             unsigned LineNo, llvm::Function *Fn);
+  CreateSubprogramDefinition(llvm::DISubprogram &SPDeclaration, unsigned LineNo,
+                             llvm::Function *Fn);
 
   /// InsertDeclare - Insert a new llvm.dbg.declare intrinsic call.
-  llvm::Instruction *
-  InsertDeclare(llvm::Value *Storage,
-                llvm::DIVariable D, llvm::DIExpression Expr,
-                llvm::BasicBlock *InsertAtEnd);
-  
+  llvm::Instruction *InsertDeclare(llvm::Value *Storage, llvm::DIVariable D,
+                                   llvm::DIExpression Expr,
+                                   llvm::BasicBlock *InsertAtEnd);
+
   /// InsertDeclare - Insert a new llvm.dbg.declare intrinsic call.
-  llvm::Instruction *
-  InsertDeclare(llvm::Value *Storage,
-                llvm::DIVariable D, llvm::DIExpression Expr,
-                llvm::Instruction *InsertBefore);
+  llvm::Instruction *InsertDeclare(llvm::Value *Storage, llvm::DIVariable D,
+                                   llvm::DIExpression Expr,
+                                   llvm::Instruction *InsertBefore);
 
   /// InsertDbgValueIntrinsic - Insert a new llvm.dbg.value intrinsic call.
-  llvm::Instruction *
-  InsertDbgValueIntrinsic(llvm::Value *V, uint64_t Offset,
-                          llvm::DIVariable D, llvm::DIExpression Expr,
-                          llvm::BasicBlock *InsertAtEnd);
+  llvm::Instruction *InsertDbgValueIntrinsic(llvm::Value *V, uint64_t Offset,
+                                             llvm::DIVariable D,
+                                             llvm::DIExpression Expr,
+                                             llvm::BasicBlock *InsertAtEnd);
 
   /// InsertDbgValueIntrinsic - Insert a new llvm.dbg.value intrinsic call.
   llvm::Instruction *InsertDbgValueIntrinsic(llvm::Value *V, uint64_t Offset,
@@ -217,6 +216,6 @@ private:
                                              llvm::Instruction *InsertBefore);
 };
 
-#endif
+#endif // LLVM_BELOW_OR(3,6)
 
 #endif /* DRAGONEGG_DEBUG_H */

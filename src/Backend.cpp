@@ -39,7 +39,7 @@
 #include "llvm/IR/Module.h"
 #include "llvm/IR/Verifier.h"
 #include "llvm/MC/SubtargetFeature.h"
-#if LLVM_VERSION_GT(3,6)
+#if LLVM_ABOVE(3, 6)
 #include "llvm/IR/LegacyPassManager.h"
 #include "llvm/Analysis/TargetLibraryInfo.h"
 #else
@@ -112,7 +112,7 @@ extern "C" {
 #include "context.h"
 #include "stor-layout.h"
 
-//Below lines were in the old tree-flow.h
+// Below lines were in the old tree-flow.h
 #include "bitmap.h"
 #include "sbitmap.h"
 #include "tree-ssa-operands.h"
@@ -120,7 +120,7 @@ extern "C" {
 #include "ipa-reference.h"
 #include "cgraph.h"
 
-//Below lines were from a suggestion on a bug report online
+// Below lines were from a suggestion on a bug report online
 #include "function.h"
 #include "basic-block.h"
 #include "is-a.h"
@@ -160,10 +160,10 @@ extern int flag_no_builtin __attribute__((weak));
 #endif
 
 // Non-zero if red-zone is disabled.
-//TODOstatic int flag_disable_red_zone = 0;
+// TODOstatic int flag_disable_red_zone = 0;
 
 // Non-zero if implicit floating point instructions are disabled.
-//TODOstatic int flag_no_implicit_float = 0;
+// TODOstatic int flag_no_implicit_float = 0;
 
 // LLVM command line arguments specified by the user.
 std::vector<std::string> ArgStrings;
@@ -172,17 +172,16 @@ std::vector<std::string> ArgStrings;
 static const char *llvm_asm_file_name;
 
 // Global state for the LLVM backend.
-static LLVMContext PrivateContext;
-LLVMContext *TheContext = &PrivateContext;
+LLVMContext TheContext;
 DataLayout *TheDataLayout = 0;
 Module *TheModule = 0;
-#if LLVM_VERSION_LE(3,6)
+#if LLVM_BELOW_OR(3, 6)
 DebugInfo *TheDebugInfo = 0;
 #endif
 PassManagerBuilder PassBuilder;
 TargetMachine *TheTarget = 0;
 TargetFolder *TheFolder = 0;
-#if LLVM_VERSION_LE(3,6)
+#if LLVM_BELOW_OR(3, 6)
 formatted_raw_ostream *FormattedOutStream = 0;
 #else
 raw_pwrite_stream *FormattedOutStream = 0;
@@ -197,7 +196,7 @@ static bool SaveGCCOutput;
 static int LLVMCodeGenOptimizeArg = -1;
 static int LLVMIROptimizeArg = -1;
 
-std::vector<std::pair<Constant *, int> > StaticCtors, StaticDtors;
+std::vector<std::pair<Constant *, int>> StaticCtors, StaticDtors;
 SmallSetVector<Constant *, 32> AttributeUsedGlobals;
 SmallSetVector<Constant *, 32> AttributeCompilerUsedGlobals;
 std::vector<Constant *> AttributeAnnotateGlobals;
@@ -205,7 +204,7 @@ std::vector<Constant *> AttributeAnnotateGlobals;
 /// PerFunctionPasses - This is the list of cleanup passes run per-function
 /// as each is compiled.  In cases where we are not doing IPO, it includes the
 /// code generator.
-#if LLVM_VERSION_LE(3,6)
+#if LLVM_BELOW_OR(3, 6)
 static FunctionPassManager *PerFunctionPasses = 0;
 static PassManager *PerModulePasses = 0;
 static PassManager *CodeGenPasses = 0;
@@ -224,18 +223,18 @@ static void createPerModuleOptimizationPasses();
 static struct cgraph_node *cgraph_symbol(struct cgraph_node *N) { return N; }
 static struct varpool_node *varpool_symbol(struct varpool_node *N) { return N; }
 
-#define ipa_ref_list_referring_iterate(L,I,P) \
-  ipa_ref_list_refering_iterate(L,I,P)
+#define ipa_ref_list_referring_iterate(L, I, P)                                \
+  ipa_ref_list_refering_iterate(L, I, P)
 #define ipa_ref_referring_node(R) ipa_ref_refering_node(R)
 #define ipa_ref_referring_varpool_node(R) ipa_ref_refering_varpool_node(R)
 
 #define asm_nodes cgraph_asm_nodes
 #define asm_node cgraph_asm_node
 
-#define FOR_EACH_FUNCTION(node) \
+#define FOR_EACH_FUNCTION(node)                                                \
   for ((node) = cgraph_nodes; (node); (node) = (node)->next)
 
-#define FOR_EACH_VARIABLE(node) \
+#define FOR_EACH_VARIABLE(node)                                                \
   for ((node) = varpool_nodes; (node); (node) = (node)->next)
 
 #else
@@ -383,8 +382,8 @@ static bool SizeOfGlobalMatchesDecl(GlobalValue *GV, tree decl) {
   uint64_t gcc_size = getInt64(DECL_SIZE(decl), true);
   const DataLayout *DL = TheDataLayout;
   unsigned Align = 8 * DL->getABITypeAlignment(Ty);
-  return TheDataLayout->getTypeAllocSizeInBits(
-             Ty) == ((gcc_size + Align - 1) / Align) * Align;
+  return TheDataLayout->getTypeAllocSizeInBits(Ty) ==
+         ((gcc_size + Align - 1) / Align) * Align;
 }
 #endif
 
@@ -394,7 +393,7 @@ static bool SizeOfGlobalMatchesDecl(GlobalValue *GV, tree decl) {
 
 /// ConfigureLLVM - Initialize and configure LLVM.
 static void ConfigureLLVM(void) {
-  // Initialize the LLVM backend.
+// Initialize the LLVM backend.
 #define DoInit2(TARG, MOD) LLVMInitialize##TARG##MOD()
 #define DoInit(T, M) DoInit2(T, M)
   DoInit(LLVM_TARGET_NAME, TargetInfo);
@@ -409,20 +408,21 @@ static void ConfigureLLVM(void) {
   std::vector<const char *> Args;
   Args.push_back(progname); // program name
 
-//TODO  // Allow targets to specify PIC options and other stuff to the corresponding
-//TODO  // LLVM backends.
-//TODO#ifdef LLVM_SET_RED_ZONE_FLAG
-//TODO  LLVM_SET_RED_ZONE_FLAG(flag_disable_red_zone)
-//TODO#endif
+// TODO  // Allow targets to specify PIC options and other stuff to the
+// corresponding
+// TODO  // LLVM backends.
+// TODO#ifdef LLVM_SET_RED_ZONE_FLAG
+// TODO  LLVM_SET_RED_ZONE_FLAG(flag_disable_red_zone)
+// TODO#endif
 #ifdef LLVM_SET_TARGET_OPTIONS
   LLVM_SET_TARGET_OPTIONS(Args);
 #endif
 #ifdef LLVM_SET_MACHINE_OPTIONS
   LLVM_SET_MACHINE_OPTIONS(Args);
 #endif
-  //TODO#ifdef LLVM_SET_IMPLICIT_FLOAT
-  //TODO  LLVM_SET_IMPLICIT_FLOAT(flag_no_implicit_float)
-  //TODO#endif
+  // TODO#ifdef LLVM_SET_IMPLICIT_FLOAT
+  // TODO  LLVM_SET_IMPLICIT_FLOAT(flag_no_implicit_float)
+  // TODO#endif
 
   if (time_report || !quiet_flag || flag_detailed_statistics)
     Args.push_back("--time-passes");
@@ -445,23 +445,25 @@ static void ConfigureLLVM(void) {
   // directly from the command line, do so now.  This is mainly for debugging
   // purposes, and shouldn't really be for general use.
 
-  //TODO  if (flag_limited_precision > 0) {
-  //TODO    std::string Arg("--limit-float-precision="+utostr(flag_limited_precision));
-  //TODO    ArgStrings.push_back(Arg);
-  //TODO  }
+  // TODO  if (flag_limited_precision > 0) {
+  // TODO    std::string
+  // Arg("--limit-float-precision="+utostr(flag_limited_precision));
+  // TODO    ArgStrings.push_back(Arg);
+  // TODO  }
 
   for (unsigned i = 0, e = ArgStrings.size(); i != e; ++i)
     Args.push_back(ArgStrings[i].c_str());
 
-  //TODO  std::vector<std::string> LLVM_Optns; // Avoid deallocation before opts parsed!
-  //TODO  if (llvm_optns) {
-  //TODO    llvm::SmallVector<llvm::StringRef, 16> Buf;
-  //TODO    SplitString(llvm_optns, Buf);
-  //TODO    for(unsigned i = 0, e = Buf.size(); i != e; ++i) {
-  //TODO      LLVM_Optns.push_back(Buf[i]);
-  //TODO      Args.push_back(LLVM_Optns.back().c_str());
-  //TODO    }
-  //TODO  }
+  // TODO  std::vector<std::string> LLVM_Optns; // Avoid deallocation before
+  // opts parsed!
+  // TODO  if (llvm_optns) {
+  // TODO    llvm::SmallVector<llvm::StringRef, 16> Buf;
+  // TODO    SplitString(llvm_optns, Buf);
+  // TODO    for(unsigned i = 0, e = Buf.size(); i != e; ++i) {
+  // TODO      LLVM_Optns.push_back(Buf[i]);
+  // TODO      Args.push_back(LLVM_Optns.back().c_str());
+  // TODO    }
+  // TODO  }
 
   Args.push_back(0); // Null terminator.
   int pseudo_argc = Args.size() - 1;
@@ -533,9 +535,9 @@ static void CreateTargetMachine(const std::string &TargetTriple) {
   FeatureStr = Features.getString();
 #endif
 
-  // The target can set LLVM_SET_RELOC_MODEL to configure the relocation model
-  // used by the LLVM backend.
-#if LLVM_VERSION_EQ(3,9)
+// The target can set LLVM_SET_RELOC_MODEL to configure the relocation model
+// used by the LLVM backend.
+#if LLVM_EQUAL(3, 9)
   Reloc::Model RelocModel = Reloc::Model::PIC_;
 #else
   Reloc::Model RelocModel = Reloc::Default;
@@ -553,7 +555,7 @@ static void CreateTargetMachine(const std::string &TargetTriple) {
 
   TargetOptions Options;
 
-#if LLVM_VERSION_LE(3,6)
+#if LLVM_BELOW_OR(3, 6)
   // Set frame pointer elimination mode.
   if (flag_omit_frame_pointer) {
     // Eliminate frame pointers everywhere.
@@ -563,11 +565,11 @@ static void CreateTargetMachine(const std::string &TargetTriple) {
     Options.NoFramePointerElim = true;
   }
 #endif
-  // If a target has an option to eliminate frame pointers in leaf functions
-  // only then it should set
-  //   NoFramePointerElim = false;
-  //   NoFramePointerElimNonLeaf = true;
-  // in its LLVM_SET_TARGET_MACHINE_OPTIONS method when this option is true.
+// If a target has an option to eliminate frame pointers in leaf functions
+// only then it should set
+//   NoFramePointerElim = false;
+//   NoFramePointerElimNonLeaf = true;
+// in its LLVM_SET_TARGET_MACHINE_OPTIONS method when this option is true.
 
 #ifdef HAVE_INITFINI_ARRAY
   Options.UseInitArray = true;
@@ -587,15 +589,15 @@ static void CreateTargetMachine(const std::string &TargetTriple) {
 #if ((GCC_MINOR > 5 && GCC_MAJOR == 4) || GCC_MAJOR >= 5)
       fast_math_flags_set_p(&global_options);
 #else
-  fast_math_flags_set_p();
+      fast_math_flags_set_p();
 #endif
-  // TODO: UseSoftFloat.
-  // TODO: StackAlignmentOverride.
-  // TODO: RealignStack.
-  // TODO: DisableTailCalls.
-  // TODO: TrapFuncName.
-  // TODO: -fsplit-stack
-#if LLVM_VERSION_LT(3,9)
+// TODO: UseSoftFloat.
+// TODO: StackAlignmentOverride.
+// TODO: RealignStack.
+// TODO: DisableTailCalls.
+// TODO: TrapFuncName.
+// TODO: -fsplit-stack
+#if LLVM_BELOW(3, 9)
   Options.PositionIndependentExecutable = flag_pie;
 #endif
 
@@ -609,7 +611,7 @@ static void CreateTargetMachine(const std::string &TargetTriple) {
 
   TheTarget = TME->createTargetMachine(TargetTriple, CPU, FeatureStr, Options,
                                        RelocModel, CMModel, CodeGenOptLevel());
-#if LLVM_VERSION_LE(3,6)
+#if LLVM_BELOW_OR(3, 6)
   TheDataLayout = new DataLayout(TheTarget->getSubtargetImpl()
                                      ->getDataLayout()
                                      ->getStringRepresentation());
@@ -641,7 +643,7 @@ static void output_ident(const char *ident_str) {
 static void CreateModule(const std::string &TargetTriple) {
   // Create the module itself.
   StringRef ModuleID = main_input_filename ? main_input_filename : "";
-  TheModule = new Module(ModuleID, *TheContext);
+  TheModule = new Module(ModuleID, TheContext);
 
 #if (GCC_MINOR < 8 && GCC_MAJOR == 4)
 #ifdef IDENT_ASM_OP
@@ -698,9 +700,9 @@ static void InstallLanguageSettings() {
   } else if (LanguageName == "GNU C++") {
     flag_odr = true; // C++ obeys the one-definition-rule
     flag_no_simplify_libcalls = flag_no_builtin;
-  } else if (LanguageName == "GNU Fortran"
-             || LanguageName == "GNU Fortran2008"
-             || LanguageName == "GNU Fortran2003") {
+  } else if (LanguageName == "GNU Fortran" ||
+             LanguageName == "GNU Fortran2008" ||
+             LanguageName == "GNU Fortran2003") {
     flag_functions_from_args = true;
   } else if (LanguageName == "GNU GIMPLE") { // LTO gold plugin
   } else if (LanguageName == "GNU Go") {
@@ -730,13 +732,13 @@ static void InitializeBackend(void) {
   // Create a module to hold the generated LLVM IR.
   CreateModule(TargetTriple);
 
-#if LLVM_VERSION_LE(3,6)
+#if LLVM_BELOW_OR(3, 6)
   TheFolder = new TargetFolder(TheDataLayout);
 #else
   TheFolder = new TargetFolder(*TheDataLayout);
 #endif
 
-#if LLVM_VERSION_LE(3,6)
+#if LLVM_BELOW_OR(3, 6)
   if (debug_info_level > DINFO_LEVEL_NONE) {
     TheDebugInfo = new DebugInfo(TheModule);
     TheDebugInfo->Initialize();
@@ -750,13 +752,13 @@ static void InitializeBackend(void) {
   PassBuilder.SizeLevel = optimize_size;
   PassBuilder.DisableUnitAtATime = !flag_unit_at_a_time;
   PassBuilder.DisableUnrollLoops = !flag_unroll_loops;
-//  Don't turn on the SLP vectorizer by default at -O3 for the moment.
-//  PassBuilder.SLPVectorize = flag_tree_slp_vectorize;
+  //  Don't turn on the SLP vectorizer by default at -O3 for the moment.
+  //  PassBuilder.SLPVectorize = flag_tree_slp_vectorize;
   PassBuilder.LoopVectorize = flag_tree_vectorize;
 
-#if LLVM_VERSION_LE(3,6)
+#if LLVM_BELOW_OR(3, 6)
   PassBuilder.LibraryInfo =
-      new TargetLibraryInfo((Triple) TheModule->getTargetTriple());
+      new TargetLibraryInfo((Triple)TheModule->getTargetTriple());
   if (flag_no_simplify_libcalls)
     PassBuilder.LibraryInfo->disableAllFunctions();
 #endif
@@ -769,11 +771,11 @@ static void InitializeOutputStreams(bool Binary) {
   assert(!FormattedOutStream && "Output stream already initialized!");
   std::error_code EC;
 
-#if LLVM_VERSION_LE(3,6)
+#if LLVM_BELOW_OR(3, 6)
   raw_ostream *OutStream = new raw_fd_ostream(
       llvm_asm_file_name, EC, Binary ? sys::fs::F_None : sys::fs::F_Text);
 
-  FormattedOutStream = new FormattedOutStream();
+  FormattedOutStream = new formatted_raw_ostream();
   FormattedOutStream->setStream(*OutStream,
                                 formatted_raw_ostream::PRESERVE_STREAM);
 #else
@@ -788,9 +790,9 @@ static void createPerFunctionOptimizationPasses() {
   if (PerFunctionPasses)
     return;
 
-  // Create and set up the per-function pass manager.
-  // FIXME: Move the code generator to be function-at-a-time.
-#if LLVM_VERSION_LE(3,6)
+// Create and set up the per-function pass manager.
+// FIXME: Move the code generator to be function-at-a-time.
+#if LLVM_BELOW_OR(3, 6)
   PerFunctionPasses = new FunctionPassManager(TheModule);
   PerFunctionPasses->add(new DataLayoutPass());
   TheTarget->addAnalysisPasses(*PerFunctionPasses);
@@ -812,7 +814,7 @@ static void createPerFunctionOptimizationPasses() {
   // FIXME: This is disabled right now until bugs can be worked out.  Reenable
   // this for fast -O0 compiles!
   if (!EmitIR && 0) {
-#if LLVM_VERSION_LE(3,6)
+#if LLVM_BELOW_OR(3, 6)
     FunctionPassManager *PM = PerFunctionPasses;
 #else
     legacy::FunctionPassManager *PM = PerFunctionPasses;
@@ -844,7 +846,7 @@ static void createPerModuleOptimizationPasses() {
   if (PerModulePasses)
     return;
 
-#if LLVM_VERSION_LE(3,6)
+#if LLVM_BELOW_OR(3, 6)
   PerModulePasses = new PassManager();
   PerModulePasses->add(new DataLayoutPass());
   TheTarget->addAnalysisPasses(*PerModulePasses);
@@ -893,7 +895,7 @@ static void createPerModuleOptimizationPasses() {
     // FIXME: This is disabled right now until bugs can be worked out.  Reenable
     // this for fast -O0 compiles!
     if (PerModulePasses || 1) {
-#if LLVM_VERSION_LE(3,6)
+#if LLVM_BELOW_OR(3, 6)
       PassManager *PM = CodeGenPasses = new PassManager();
       PM->add(new DataLayoutPass());
       TheTarget->addAnalysisPasses(*PM);
@@ -924,13 +926,13 @@ static void createPerModuleOptimizationPasses() {
 
 /// ConvertStructorsList - Convert a list of static ctors/dtors to an
 /// initializer suitable for the llvm.global_[cd]tors globals.
-static void CreateStructorsList(std::vector<std::pair<Constant *, int> > &Tors,
+static void CreateStructorsList(std::vector<std::pair<Constant *, int>> &Tors,
                                 const char *Name) {
   std::vector<Constant *> InitList;
   std::vector<Constant *> StructInit;
   StructInit.resize(2);
 
-  LLVMContext &Context = *TheContext;
+  LLVMContext &Context = TheContext;
 
   Type *FPTy =
       FunctionType::get(Type::getVoidTy(Context), std::vector<Type *>(), false);
@@ -954,7 +956,7 @@ static void CreateStructorsList(std::vector<std::pair<Constant *, int> > &Tors,
 /// global if possible.
 Constant *ConvertMetadataStringToGV(const char *str) {
 
-  Constant *Init = ConstantDataArray::getString(*TheContext, str);
+  Constant *Init = ConstantDataArray::getString(TheContext, str);
 
   // Use cached string if it exists.
   static std::map<Constant *, GlobalVariable *> StringCSTCache;
@@ -969,13 +971,12 @@ Constant *ConvertMetadataStringToGV(const char *str) {
   GV->setSection("llvm.metadata");
   Slot = GV;
   return GV;
-
 }
 
 /// AddAnnotateAttrsToGlobal - Adds decls that have a annotate attribute to a
 /// vector to be emitted later.
 void AddAnnotateAttrsToGlobal(GlobalValue *GV, tree decl) {
-  LLVMContext &Context = *TheContext;
+  LLVMContext &Context = TheContext;
 
   // Handle annotate attribute on global.
   tree annotateAttr = lookup_attribute("annotate", DECL_ATTRIBUTES(decl));
@@ -1007,9 +1008,9 @@ void AddAnnotateAttrsToGlobal(GlobalValue *GV, tree decl) {
       assert(isa<STRING_CST>(val) &&
              "Annotate attribute arg should always be a string");
       Constant *strGV = AddressOf(val);
-      Constant *Element[4] = { TheFolder->CreateBitCast(GV, SBP),
-                               TheFolder->CreateBitCast(strGV, SBP), file,
-                               lineNo };
+      Constant *Element[4] = {TheFolder->CreateBitCast(GV, SBP),
+                              TheFolder->CreateBitCast(strGV, SBP), file,
+                              lineNo};
 
       AttributeAnnotateGlobals.push_back(ConstantStruct::getAnon(Element));
     }
@@ -1059,21 +1060,21 @@ static void emit_alias(tree decl, tree target) {
     target = TREE_CHAIN(target);
 
   if (isa<IDENTIFIER_NODE>(target)) {
-    if (struct cgraph_node *fnode = 
+    if (struct cgraph_node *fnode =
 #if (GCC_MAJOR >= 5)
-cgraph_node::get_for_asmname(target)
+            cgraph_node::get_for_asmname(target)
 #else
-cgraph_node_for_asm(target)
+            cgraph_node_for_asm(target)
 #endif
-)
+            )
       target = cgraph_symbol(fnode)->decl;
-    else if (struct varpool_node *vnode = 
+    else if (struct varpool_node *vnode =
 #if (GCC_MAJOR >= 5)
-varpool_node::get_for_asmname(target)
+                 varpool_node::get_for_asmname(target)
 #else
-varpool_node_for_asm(target)
+                 varpool_node_for_asm(target)
 #endif
-)
+                 )
       target = varpool_symbol(vnode)->decl;
   }
 
@@ -1114,9 +1115,8 @@ varpool_node_for_asm(target)
     auto *GV = cast<GlobalValue>(Aliasee->stripPointerCasts());
     if (auto *GA = llvm::dyn_cast<GlobalAlias>(GV))
       GV = cast<GlobalValue>(GA->getAliasee()->stripPointerCasts());
-#if LLVM_VERSION_EQ(3,7)
-    auto *GA = GlobalAlias::create(Aliasee->getType(),
-                                   Linkage, "", GV);
+#if LLVM_EQUAL(3, 7)
+    auto *GA = GlobalAlias::create(Aliasee->getType(), Linkage, "", GV);
 #else
     auto *GA = GlobalAlias::create(Aliasee->getType()->getElementType(), 0,
                                    Linkage, "", GV);
@@ -1158,14 +1158,14 @@ static void emit_varpool_aliases(struct varpool_node *node) {
     if (ref->use != IPA_REF_ALIAS)
       continue;
 #if (GCC_MAJOR >= 5)
-    varpool_node *alias = as_a<varpool_node*>(ref->referring);
+    varpool_node *alias = as_a<varpool_node *>(ref->referring);
 #else
 #if (GCC_MINOR <= 8 && GCC_MAJOR == 4)
     struct varpool_node *alias = ipa_ref_referring_varpool_node(ref);
 #else
-	varpool_node *alias = ipa_ref_referring_varpool_node(ref);
+    varpool_node *alias = ipa_ref_referring_varpool_node(ref);
 #endif
-#endif   /* GCC_MAJOR >= 5 */
+#endif /* GCC_MAJOR >= 5 */
     if (lookup_attribute("weakref",
                          DECL_ATTRIBUTES(varpool_symbol(alias)->decl)))
       continue;
@@ -1176,12 +1176,12 @@ static void emit_varpool_aliases(struct varpool_node *node) {
     emit_alias(varpool_symbol(alias)->decl, alias->alias_of);
 #else
     emit_alias(varpool_symbol(alias)->decl, varpool_alias_target(alias)->decl);
-    //    emit_alias(varpool_symbol(alias)->decl, alias->alias_target);
+//    emit_alias(varpool_symbol(alias)->decl, alias->alias_target);
 #endif
-#endif   /* GCC_MAJOR >= 5 */
+#endif /* GCC_MAJOR >= 5 */
     emit_varpool_aliases(alias);
   }
-#endif   /* (GCC_MINOR < 7 && GCC_MAJOR == 4) */
+#endif /* (GCC_MINOR < 7 && GCC_MAJOR == 4) */
 }
 
 /// emit_global - Emit the specified VAR_DECL or aggregate CONST_DECL to LLVM as
@@ -1197,7 +1197,7 @@ static void emit_global(tree decl) {
   if (!TYPE_SIZE(TREE_TYPE(decl)))
     return;
 
-  //TODO  timevar_push(TV_LLVM_GLOBALS);
+  // TODO  timevar_push(TV_LLVM_GLOBALS);
 
   // Get or create the global variable now.
   GlobalVariable *GV = cast<GlobalVariable>(DECL_LLVM(decl));
@@ -1282,13 +1282,13 @@ static void emit_global(tree decl) {
   TARGET_ADJUST_LLVM_LINKAGE(GV, decl);
 #endif /* TARGET_ADJUST_LLVM_LINKAGE */
 
-  // If this is a variable that never has its address taken then allow it to be
-  // merged with other variables (C and C++ say that different variables should
-  // have different addresses, which is why this is only correct if the address
-  // is not taken).  However if -fmerge-all-constants was specified then allow
-  // merging even if the address was taken.  Note that merging will only happen
-  // if the global is constant or later proved to be constant by the optimizers.
-#if LLVM_VERSION_EQ(3,9)
+// If this is a variable that never has its address taken then allow it to be
+// merged with other variables (C and C++ say that different variables should
+// have different addresses, which is why this is only correct if the address
+// is not taken).  However if -fmerge-all-constants was specified then allow
+// merging even if the address was taken.  Note that merging will only happen
+// if the global is constant or later proved to be constant by the optimizers.
+#if LLVM_EQUAL(3, 9)
   GV->setUnnamedAddr(GlobalValue::UnnamedAddr::None);
 #else
   GV->setUnnamedAddr(flag_merge_constants >= 2 || !TREE_ADDRESSABLE(decl));
@@ -1324,12 +1324,13 @@ static void emit_global(tree decl) {
     // IR look more portable.
     if (!DECL_USER_ALIGN(decl) &&
         GV->getAlignment() ==
-        getDataLayout().getABITypeAlignment(GV->getType()->getElementType()))
+            getDataLayout().getABITypeAlignment(
+                GV->getType()->getElementType()))
       GV->setAlignment(0);
 
     // Handle used decls
     if (DECL_PRESERVE_P(decl)) {
-      if (false) //FIXME DECL_LLVM_LINKER_PRIVATE (decl))
+      if (false) // FIXME DECL_LLVM_LINKER_PRIVATE (decl))
         AttributeCompilerUsedGlobals.insert(GV);
       else
         AttributeUsedGlobals.insert(GV);
@@ -1353,7 +1354,7 @@ static void emit_global(tree decl) {
 #endif
   }
 
-#if LLVM_VERSION_LE(3,6)
+#if LLVM_BELOW_OR(3, 6)
   if (TheDebugInfo)
     TheDebugInfo->EmitGlobalVariable(GV, decl);
 #endif
@@ -1361,7 +1362,7 @@ static void emit_global(tree decl) {
   // Sanity check that the LLVM global has the right size.
   assert(SizeOfGlobalMatchesDecl(GV, decl) && "Global has wrong size!");
 
-  // Mark the global as written so gcc doesn't waste time outputting it.
+// Mark the global as written so gcc doesn't waste time outputting it.
 #if (GCC_MINOR < 8 && GCC_MAJOR == 4)
   TREE_ASM_WRITTEN(decl) = 1;
 #endif
@@ -1370,18 +1371,18 @@ static void emit_global(tree decl) {
   if (isa<VAR_DECL>(decl))
     if (struct varpool_node *vnode =
 #if (GCC_MAJOR >= 5)
-        varpool_node::get(decl)
+            varpool_node::get(decl)
 #else
 #if (GCC_MINOR < 6 && GCC_MAJOR == 4)
             varpool_node(decl)
 #else
-        varpool_get_node(decl)
+            varpool_get_node(decl)
 #endif
-#endif   /* GCC_MAJOR >= 5 */
-        )
+#endif /* GCC_MAJOR >= 5 */
+            )
       emit_varpool_aliases(vnode);
 
-  //TODO  timevar_pop(TV_LLVM_GLOBALS);
+  // TODO  timevar_pop(TV_LLVM_GLOBALS);
 }
 
 /// ValidateRegisterVariable - Check that a static "asm" variable is
@@ -1448,7 +1449,7 @@ Value *make_decl_llvm(tree decl) {
   if (errorcount || sorrycount)
     return NULL; // Do not process broken code.
 
-  LLVMContext &Context = *TheContext;
+  LLVMContext &Context = TheContext;
 
   // Global register variable with asm name, e.g.:
   // register unsigned long esp __asm__("ebp");
@@ -1460,7 +1461,7 @@ Value *make_decl_llvm(tree decl) {
     return NULL;
   }
 
-  //TODO  timevar_push(TV_LLVM_GLOBALS);
+  // TODO  timevar_push(TV_LLVM_GLOBALS);
 
   std::string Name;
   if (!isa<CONST_DECL>(decl)) // CONST_DECLs do not have assembler names.
@@ -1480,13 +1481,14 @@ Value *make_decl_llvm(tree decl) {
 
   // Specifying a section attribute on a variable forces it into a
   // non-.bss section, and thus it cannot be common.
-  if (isa<VAR_DECL>(decl) && DECL_SECTION_NAME(decl) !=
+  if (isa<VAR_DECL>(decl) &&
+      DECL_SECTION_NAME(decl) !=
 #if (GCC_MAJOR >= 5)
- NULL
+          NULL
 #else
- NULL_TREE
+          NULL_TREE
 #endif
- &&
+      &&
       DECL_INITIAL(decl) == NULL_TREE && DECL_COMMON(decl))
     DECL_COMMON(decl) = 0;
 
@@ -1664,7 +1666,7 @@ Value *make_decl_llvm(tree decl) {
 
     return SET_DECL_LLVM(decl, GV);
   }
-  //TODO  timevar_pop(TV_LLVM_GLOBALS);
+  // TODO  timevar_pop(TV_LLVM_GLOBALS);
 }
 
 /// make_definition_llvm - Ensures that the body or initial value of the given
@@ -1775,7 +1777,7 @@ int plugin_is_GPL_compatible __attribute__((visibility("default")));
 /// before processing the compilation unit.
 /// NOTE: called even when only doing syntax checking, so do not initialize the
 /// module etc here.
-static void llvm_start_unit(void */*gcc_data*/, void */*user_data*/) {
+static void llvm_start_unit(void * /*gcc_data*/, void * /*user_data*/) {
   if (!quiet_flag)
     errs() << "Starting compilation unit\n";
 #if (GCC_MINOR <= 8 && GCC_MAJOR == 4)
@@ -1787,16 +1789,16 @@ static void llvm_start_unit(void */*gcc_data*/, void */*user_data*/) {
 #if ((GCC_MINOR > 5 && GCC_MAJOR == 4) || GCC_MAJOR >= 5)
       "";
 #else
-  1;
+      1;
 #endif
   flag_generate_lto = 1;
   flag_whole_program = 0;
 #endif
-#endif    /* (GCC_MINOR <= 8 && GCC_MAJOR == 4) */
+#endif /* (GCC_MINOR <= 8 && GCC_MAJOR == 4) */
 #if (GCC_MAJOR >= 5)
 #ifdef ENABLE_LTO
-//  EmitIR |= flag_generate_lto != 0;
-//  flag_lto = "";
+  //  EmitIR |= flag_generate_lto != 0;
+  //  flag_lto = "";
   flag_generate_lto = 1;
 //  flag_whole_program = 0;
 #endif
@@ -1850,7 +1852,7 @@ static void emit_cgraph_aliases(struct cgraph_node *node) {
     if (ref->use != IPA_REF_ALIAS)
       continue;
 #if (GCC_MAJOR >= 5)
-    struct cgraph_node *alias = as_a<cgraph_node*>(ref->referring);
+    struct cgraph_node *alias = as_a<cgraph_node *>(ref->referring);
 #else
     struct cgraph_node *alias = ipa_ref_referring_node(ref);
 #endif
@@ -1866,7 +1868,7 @@ static void emit_cgraph_aliases(struct cgraph_node *node) {
 
     emit_cgraph_aliases(alias);
   }
-#endif   /* (GCC_MINOR < 7 && GCC_MAJOR == 4) */
+#endif /* (GCC_MINOR < 7 && GCC_MAJOR == 4) */
 }
 
 /// emit_current_function - Turn the current gimple function into LLVM IR.  This
@@ -1882,7 +1884,7 @@ static void emit_current_function() {
     Fn = Emitter.EmitFunction();
   }
 
-  // Output any associated aliases.
+// Output any associated aliases.
 #if (GCC_MAJOR >= 5)
   emit_cgraph_aliases(cgraph_node::get(current_function_decl));
 #else
@@ -1912,7 +1914,7 @@ static unsigned int rtl_emit_function(void) {
     emit_current_function();
   }
 
-  // Free tree-ssa data structures.
+// Free tree-ssa data structures.
 #if (GCC_MINOR < 8)
   execute_free_datastructures();
 #else
@@ -1928,104 +1930,101 @@ static unsigned int rtl_emit_function(void) {
 }
 
 /// pass_rtl_emit_function - RTL pass that converts a function to LLVM IR.
-static struct rtl_opt_pass pass_rtl_emit_function = { {
-  RTL_PASS, "rtl_emit_function",         /* name */
+static struct rtl_opt_pass pass_rtl_emit_function = {
+    {RTL_PASS, "rtl_emit_function", /* name */
 #if (GCC_MINOR >= 8)
-  OPTGROUP_NONE,                         /* optinfo_flags */
+     OPTGROUP_NONE, /* optinfo_flags */
 #endif
-  NULL,                                  /* gate */
-  rtl_emit_function,                     /* execute */
-  NULL,                                  /* sub */
-  NULL,                                  /* next */
-  0,                                     /* static_pass_number */
-  TV_NONE,                               /* tv_id */
-  PROP_ssa | PROP_gimple_leh | PROP_cfg, /* properties_required */
-  0,                                     /* properties_provided */
-  PROP_ssa | PROP_trees,                 /* properties_destroyed */
-  TODO_verify_ssa | TODO_verify_flow | TODO_verify_stmts
-} };
+     NULL,                                  /* gate */
+     rtl_emit_function,                     /* execute */
+     NULL,                                  /* sub */
+     NULL,                                  /* next */
+     0,                                     /* static_pass_number */
+     TV_NONE,                               /* tv_id */
+     PROP_ssa | PROP_gimple_leh | PROP_cfg, /* properties_required */
+     0,                                     /* properties_provided */
+     PROP_ssa | PROP_trees,                 /* properties_destroyed */
+     TODO_verify_ssa | TODO_verify_flow | TODO_verify_stmts}};
 
-#else                        /* #if (GCC_MINOR<=8 && GCC_MAJOR == 4) */
+#else /* #if (GCC_MINOR<=8 && GCC_MAJOR == 4) */
 
 #if ((GCC_MINOR == 9 && GCC_MAJOR == 4) || GCC_MAJOR >= 5)
 static struct pass_data pass_data_rtl_emit_function = {
-  RTL_PASS, "rtl_emit_function",         /* name */
-  OPTGROUP_NONE,                         /* optinfo_flags */
+    RTL_PASS, "rtl_emit_function", /* name */
+    OPTGROUP_NONE, /* optinfo_flags */
 #if (GCC_MINOR == 9 && GCC_MAJOR == 4)
-  false,                                 /* has_gate */
-  true,                                  /* has_execute */
+    false,         /* has_gate */
+    true,          /* has_execute */
 #endif
-  TV_NONE,                               /* tv_id */
-  PROP_ssa | PROP_gimple_leh | PROP_cfg, /* properties_required */
-  0,                                     /* properties_provided */
-  PROP_ssa | PROP_trees,                 /* properties_destroyed */
+    TV_NONE,       /* tv_id */
+    PROP_ssa | PROP_gimple_leh | PROP_cfg, /* properties_required */
+    0,                                     /* properties_provided */
+    PROP_ssa | PROP_trees, /* properties_destroyed */
 #if (GCC_MINOR == 9 && GCC_MAJOR == 4)
-  TODO_verify_ssa | TODO_verify_flow | TODO_verify_stmts
+    TODO_verify_ssa | TODO_verify_flow | TODO_verify_stmts
 #else
-  TODO_verify_all,
-  0
+    TODO_verify_all, 0
 #endif
 };
 
-class pass_rtl_emit_function : public rtl_opt_pass
-{
+class pass_rtl_emit_function : public rtl_opt_pass {
 public:
-  pass_rtl_emit_function (gcc::context *ctxt)
-    : rtl_opt_pass (pass_data_rtl_emit_function, ctxt)
-  {}
+  pass_rtl_emit_function(gcc::context *ctxt)
+      : rtl_opt_pass(pass_data_rtl_emit_function, ctxt) {}
 
-  unsigned int execute (
+  unsigned int execute(
 #if (GCC_MAJOR >= 5)
- function *
+      function *
 #endif
-) {
+      ) {
     if (!errorcount && !sorrycount) {
       InitializeBackend();
       // Convert the function.
       emit_current_function();
     }
 
-    // Free tree-ssa data structures.
-  #if (GCC_MINOR < 8 && GCC_MAJOR == 4)
+// Free tree-ssa data structures.
+#if (GCC_MINOR < 8 && GCC_MAJOR == 4)
     execute_free_datastructures();
-  #else
+#else
     free_dominance_info(CDI_DOMINATORS);
     free_dominance_info(CDI_POST_DOMINATORS);
     // And get rid of annotations we no longer need.
     delete_tree_cfg_annotations();
-  #endif
+#endif
 
     // Finally, we have written out this function!
     TREE_ASM_WRITTEN(current_function_decl) = 1;
     return 0;
   }
 
-  opt_pass* clone() { return new pass_rtl_emit_function(g); }
+  opt_pass *clone() { return new pass_rtl_emit_function(g); }
 };
 
-rtl_opt_pass *make_pass_rtl_emit_function (gcc::context *ctxt) {
+rtl_opt_pass *make_pass_rtl_emit_function(gcc::context *ctxt) {
   return new pass_rtl_emit_function(ctxt);
 }
-//pass_rtl_emit_function pass_rtl_emit_function(g);
-#endif    /* #if ((GCC_MINOR == 9 && GCC_MAJOR == 4) || GCC_MAJOR >= 5) */
+// pass_rtl_emit_function pass_rtl_emit_function(g);
+#endif /* #if ((GCC_MINOR == 9 && GCC_MAJOR == 4) || GCC_MAJOR >= 5) */
 
-#endif    /* #if (GCC_MINOR <= 8 && GCC_MAJOR == 4) */
+#endif /* #if (GCC_MINOR <= 8 && GCC_MAJOR == 4) */
 
 /// emit_file_scope_asms - Output any file-scope assembly.
 static void emit_file_scope_asms() {
   for (
 #if (GCC_MAJOR >= 5)
- struct asm_node *anode = symtab->first_asm_symbol()
+      struct asm_node *anode = symtab->first_asm_symbol()
 #else
- struct asm_node *anode = asm_nodes
+      struct asm_node *anode = asm_nodes
 #endif
-; anode; anode = anode->next) {
+          ;
+      anode; anode = anode->next) {
     tree string = anode->asm_str;
     if (isa<ADDR_EXPR>(string))
       string = TREE_OPERAND(string, 0);
     TheModule->appendModuleInlineAsm(TREE_STRING_POINTER(string));
   }
-  // Remove the asms so gcc doesn't waste time outputting them.
+// Remove the asms so gcc doesn't waste time outputting them.
 #if (GCC_MAJOR >= 5)
   symtab->clear_asm_symbols();
 #else
@@ -2045,11 +2044,11 @@ static tree get_alias_symbol(tree decl) {
 static void emit_cgraph_weakrefs() {
   struct cgraph_node *node;
   FOR_EACH_FUNCTION(node)
-    if (node->alias && DECL_EXTERNAL(cgraph_symbol(node)->decl) &&
-        lookup_attribute("weakref", DECL_ATTRIBUTES(cgraph_symbol(node)->decl)))
-      emit_alias(cgraph_symbol(node)->decl, node->thunk.alias ?
-                 node->thunk.alias :
-                 get_alias_symbol(cgraph_symbol(node)->decl));
+  if (node->alias && DECL_EXTERNAL(cgraph_symbol(node)->decl) &&
+      lookup_attribute("weakref", DECL_ATTRIBUTES(cgraph_symbol(node)->decl)))
+    emit_alias(cgraph_symbol(node)->decl,
+               node->thunk.alias ? node->thunk.alias
+                                 : get_alias_symbol(cgraph_symbol(node)->decl));
 }
 
 /// emit_varpool_weakrefs - Output any varpool weak references to external
@@ -2057,19 +2056,22 @@ static void emit_cgraph_weakrefs() {
 static void emit_varpool_weakrefs() {
   struct varpool_node *vnode;
   FOR_EACH_VARIABLE(vnode)
-    if (vnode->alias && DECL_EXTERNAL(varpool_symbol(vnode)->decl) &&
-        lookup_attribute("weakref",
-                         DECL_ATTRIBUTES(varpool_symbol(vnode)->decl)))
+  if (vnode->alias && DECL_EXTERNAL(varpool_symbol(vnode)->decl) &&
+      lookup_attribute("weakref", DECL_ATTRIBUTES(varpool_symbol(vnode)->decl)))
 #if (GCC_MINOR <= 8 && GCC_MAJOR == 4)
-      emit_alias(varpool_symbol(vnode)->decl, vnode->alias_of ? vnode->alias_of
-                 : get_alias_symbol(varpool_symbol(vnode)->decl));
+    emit_alias(varpool_symbol(vnode)->decl,
+               vnode->alias_of ? vnode->alias_of
+                               : get_alias_symbol(varpool_symbol(vnode)->decl));
 #else
 #if (GCC_MAJOR >= 5)
-       emit_alias(varpool_symbol(vnode)->decl, vnode->alias_target ? vnode->alias_target
-                  : get_alias_symbol(varpool_symbol(vnode)->decl));
+    emit_alias(varpool_symbol(vnode)->decl,
+               vnode->alias_target
+                   ? vnode->alias_target
+                   : get_alias_symbol(varpool_symbol(vnode)->decl));
 #else
-  emit_alias(varpool_symbol(vnode)->decl, vnode->analyzed ? varpool_alias_target(vnode)->decl
-             : get_alias_symbol(varpool_symbol(vnode)->decl));
+    emit_alias(varpool_symbol(vnode)->decl,
+               vnode->analyzed ? varpool_alias_target(vnode)->decl
+                               : get_alias_symbol(varpool_symbol(vnode)->decl));
 #endif
 #endif
 }
@@ -2095,7 +2097,7 @@ static void llvm_emit_globals(void * /*gcc_data*/, void * /*user_data*/) {
   // output when their user is, or discarded if unused.
   struct varpool_node *vnode;
   FOR_EACH_VARIABLE(vnode) {
-    // If the node is explicitly marked as not being needed, then skip it.
+// If the node is explicitly marked as not being needed, then skip it.
 #if (GCC_MINOR < 8 && GCC_MAJOR == 4)
     if (!vnode->needed)
       continue;
@@ -2106,20 +2108,20 @@ static void llvm_emit_globals(void * /*gcc_data*/, void * /*user_data*/) {
 
     // If this variable must be output even if unused then output it.
     tree decl = varpool_symbol(vnode)->decl;
-    if (vnode->analyzed &&
-        (
+    if (vnode->analyzed && (
 #if (GCC_MINOR > 5 && GCC_MAJOR == 4)
-            !varpool_can_remove_if_no_refs(vnode)
+                               !varpool_can_remove_if_no_refs(vnode)
 #else
 #if (GCC_MAJOR >= 5)
-            !vnode->can_remove_if_no_refs_p()
+                               !vnode->can_remove_if_no_refs_p()
 #else
-            vnode->force_output ||
-            (!DECL_COMDAT(decl) &&
-             (!DECL_ARTIFICIAL(decl) || vnode->externally_visible))
+                               vnode->force_output ||
+                               (!DECL_COMDAT(decl) &&
+                                (!DECL_ARTIFICIAL(decl) ||
+                                 vnode->externally_visible))
 #endif
 #endif
-            ))
+                                   ))
       // TODO: Remove the check on the following lines.  It only exists to avoid
       // outputting block addresses when not compiling the function containing
       // the block.  We need to support outputting block addresses at odd times
@@ -2148,7 +2150,7 @@ static void llvm_emit_globals(void * /*gcc_data*/, void * /*user_data*/) {
   }
 }
 
-static void InlineAsmDiagnosticHandler(const SMDiagnostic &D, void */*Data*/,
+static void InlineAsmDiagnosticHandler(const SMDiagnostic &D, void * /*Data*/,
                                        location_t loc) {
   std::string S = D.getMessage().str(); // Ensure Message is not dangling.
   const char *Message = S.c_str();
@@ -2167,34 +2169,34 @@ static void InlineAsmDiagnosticHandler(const SMDiagnostic &D, void */*Data*/,
 
 /// llvm_finish_unit - Finish the .s file.  This is called by GCC once the
 /// compilation unit has been completely processed.
-static void llvm_finish_unit(void */*gcc_data*/, void */*user_data*/) {
+static void llvm_finish_unit(void * /*gcc_data*/, void * /*user_data*/) {
   if (errorcount || sorrycount)
     return; // Do not process broken code.
 
-  //TODO  timevar_push(TV_LLVM_PERFILE);
+  // TODO  timevar_push(TV_LLVM_PERFILE);
   if (!quiet_flag)
     errs() << "Finishing compilation unit\n";
 
   InitializeBackend();
-#if LLVM_VERSION_LE(3,6)
+#if LLVM_BELOW_OR(3, 6)
   if (TheDebugInfo) {
     delete TheDebugInfo;
     TheDebugInfo = 0;
   }
 #endif
 
-  LLVMContext &Context = *TheContext;
+  LLVMContext &Context = TheContext;
 
   createPerFunctionOptimizationPasses();
 
-  //TODO  for (Module::iterator I = TheModule->begin(), E = TheModule->end();
-  //TODO       I != E; ++I)
-  //TODO    if (!I->isDeclaration()) {
-  //TODO      if (flag_disable_red_zone)
-  //TODO        I->addFnAttr(Attribute::NoRedZone);
-  //TODO      if (flag_no_implicit_float)
-  //TODO        I->addFnAttr(Attribute::NoImplicitFloat);
-  //TODO    }
+  // TODO  for (Module::iterator I = TheModule->begin(), E = TheModule->end();
+  // TODO       I != E; ++I)
+  // TODO    if (!I->isDeclaration()) {
+  // TODO      if (flag_disable_red_zone)
+  // TODO        I->addFnAttr(Attribute::NoRedZone);
+  // TODO      if (flag_no_implicit_float)
+  // TODO        I->addFnAttr(Attribute::NoImplicitFloat);
+  // TODO    }
 
   // Add an llvm.global_ctors global if needed.
   if (!StaticCtors.empty())
@@ -2279,7 +2281,7 @@ static void llvm_finish_unit(void */*gcc_data*/, void */*user_data*/) {
   }
 
   FormattedOutStream->flush();
-  //TODO  timevar_pop(TV_LLVM_PERFILE);
+  // TODO  timevar_pop(TV_LLVM_PERFILE);
 
   // We have finished - shutdown the plugin.  Doing this here ensures that timer
   // info and other statistics are not intermingled with those produced by GCC.
@@ -2287,7 +2289,7 @@ static void llvm_finish_unit(void */*gcc_data*/, void */*user_data*/) {
 }
 
 /// llvm_finish - Run shutdown code when GCC exits.
-static void llvm_finish(void */*gcc_data*/, void */*user_data*/) {
+static void llvm_finish(void * /*gcc_data*/, void * /*user_data*/) {
   FinalizePlugin();
 }
 
@@ -2297,63 +2299,63 @@ static void llvm_finish(void */*gcc_data*/, void */*user_data*/) {
 static bool gate_null(void) { return false; }
 
 /// pass_gimple_null - Gimple pass that does nothing.
-static struct gimple_opt_pass pass_gimple_null = { {
-  GIMPLE_PASS, "*gimple_null", /* name */
+static struct gimple_opt_pass pass_gimple_null = {{
+    GIMPLE_PASS, "*gimple_null", /* name */
 #if (GCC_MINOR >= 8 && GCC_MAJOR == 4)
-  OPTGROUP_NONE,               /* optinfo_flags */
+    OPTGROUP_NONE, /* optinfo_flags */
 #endif
-  gate_null,                   /* gate */
-  NULL,                        /* execute */
-  NULL,                        /* sub */
-  NULL,                        /* next */
-  0,                           /* static_pass_number */
-  TV_NONE,                     /* tv_id */
-  0,                           /* properties_required */
-  0,                           /* properties_provided */
-  0,                           /* properties_destroyed */
-  0,                           /* todo_flags_start */
-  0                            /* todo_flags_finish */
-} };
+    gate_null, /* gate */
+    NULL,      /* execute */
+    NULL,      /* sub */
+    NULL,      /* next */
+    0,         /* static_pass_number */
+    TV_NONE,   /* tv_id */
+    0,         /* properties_required */
+    0,         /* properties_provided */
+    0,         /* properties_destroyed */
+    0,         /* todo_flags_start */
+    0          /* todo_flags_finish */
+}};
 
-#else                          /* #if (GCC_MINOR <= 8) */
+#else /* #if (GCC_MINOR <= 8) */
 #if ((GCC_MINOR == 9 && GCC_MAJOR == 4) || GCC_MAJOR >= 5)
 static struct pass_data pass_data_gimple_null = {
-  GIMPLE_PASS, "*gimple_null", /* name */
-  OPTGROUP_NONE,               /* optinfo_flags */
+    GIMPLE_PASS, "*gimple_null", /* name */
+    OPTGROUP_NONE, /* optinfo_flags */
 #if (GCC_MINOR == 9 && GCC_MAJOR == 4)
-  true,                        /* has_gate */
-  false,                       /* has_execute */
+    true,          /* has_gate */
+    false,         /* has_execute */
 #endif
-  TV_NONE,                     /* tv_id */
-  0,                           /* properties_required */
-  0,                           /* properties_provided */
-  0,                           /* properties_destroyed */
-  0,                           /* todo_flags_start */
-  0                            /* todo_flags_finish */
+    TV_NONE,       /* tv_id */
+    0,             /* properties_required */
+    0,             /* properties_provided */
+    0,             /* properties_destroyed */
+    0,             /* todo_flags_start */
+    0              /* todo_flags_finish */
 };
 
-class pass_gimple_null : public gimple_opt_pass
-{
+class pass_gimple_null : public gimple_opt_pass {
 public:
-  pass_gimple_null (gcc::context* ctxt)
-    : gimple_opt_pass (pass_data_gimple_null, ctxt)
-  {}
+  pass_gimple_null(gcc::context *ctxt)
+      : gimple_opt_pass(pass_data_gimple_null, ctxt) {}
 
-  bool gate (
+  bool gate(
 #if (GCC_MAJOR >= 5)
- function *
+      function *
 #endif
-) { return false; }
-  opt_pass* clone() { return new pass_gimple_null(g); }
+      ) {
+    return false;
+  }
+  opt_pass *clone() { return new pass_gimple_null(g); }
 };
 
-gimple_opt_pass *make_pass_gimple_null (gcc::context *ctxt) {
+gimple_opt_pass *make_pass_gimple_null(gcc::context *ctxt) {
   return new pass_gimple_null(ctxt);
 }
-//pass_gimple_null pass_gimple_null(g);
-#endif       /* #if ((GCC_MINOR == 9 && GCC_MAJOR == 4) || GCC_MAJOR >= 5) */
+// pass_gimple_null pass_gimple_null(g);
+#endif /* #if ((GCC_MINOR == 9 && GCC_MAJOR == 4) || GCC_MAJOR >= 5) */
 
-#endif       /* #if (GCC_MINOR <= 8 && GCC_MAJOR == 4) */
+#endif /* #if (GCC_MINOR <= 8 && GCC_MAJOR == 4) */
 
 #if (GCC_MINOR <= 8 && GCC_MAJOR == 4)
 
@@ -2370,59 +2372,59 @@ static bool gate_correct_state(void) { return true; }
 
 /// pass_gimple_correct_state - Gimple pass that corrects the cgraph state so
 /// newly inserted functions are processed before being converted to LLVM IR.
-static struct gimple_opt_pass pass_gimple_correct_state = { {
-  GIMPLE_PASS, "*gimple_correct_state", /* name */
+static struct gimple_opt_pass pass_gimple_correct_state = {{
+    GIMPLE_PASS, "*gimple_correct_state", /* name */
 #if (GCC_MINOR >= 8 && GCC_MAJOR == 4)
-  OPTGROUP_NONE,                        /* optinfo_flags */
+    OPTGROUP_NONE, /* optinfo_flags */
 #endif
-  gate_correct_state,                   /* gate */
-  execute_correct_state,                /* execute */
-  NULL,                                 /* sub */
-  NULL,                                 /* next */
-  0,                                    /* static_pass_number */
-  TV_NONE,                              /* tv_id */
-  0,                                    /* properties_required */
-  0,                                    /* properties_provided */
-  0,                                    /* properties_destroyed */
-  0,                                    /* todo_flags_start */
-  0                                     /* todo_flags_finish */
-} };
+    gate_correct_state,    /* gate */
+    execute_correct_state, /* execute */
+    NULL,                  /* sub */
+    NULL,                  /* next */
+    0,                     /* static_pass_number */
+    TV_NONE,               /* tv_id */
+    0,                     /* properties_required */
+    0,                     /* properties_provided */
+    0,                     /* properties_destroyed */
+    0,                     /* todo_flags_start */
+    0                      /* todo_flags_finish */
+}};
 
-#else                          /* #if (GCC_MINOR <= 8 && GCC_MAJOR == 4) */
+#else /* #if (GCC_MINOR <= 8 && GCC_MAJOR == 4) */
 #if ((GCC_MINOR == 9 && GCC_MAJOR == 4) || GCC_MAJOR >= 5)
 static struct pass_data pass_data_gimple_correct_state = {
-  GIMPLE_PASS, "*gimple_correct_state", /* name */
-  OPTGROUP_NONE,                        /* optinfo_flags */
+    GIMPLE_PASS, "*gimple_correct_state", /* name */
+    OPTGROUP_NONE, /* optinfo_flags */
 #if (GCC_MINOR == 9 && GCC_MAJOR == 4)
-  true,                                 /* has_gate */
-  true,                                 /* has_execute */
+    true,          /* has_gate */
+    true,          /* has_execute */
 #endif
-  TV_NONE,                              /* tv_id */
-  0,                                    /* properties_required */
-  0,                                    /* properties_provided */
-  0,                                    /* properties_destroyed */
-  0,                                    /* todo_flags_start */
-  0                                     /* todo_flags_finish */
+    TV_NONE,       /* tv_id */
+    0,             /* properties_required */
+    0,             /* properties_provided */
+    0,             /* properties_destroyed */
+    0,             /* todo_flags_start */
+    0              /* todo_flags_finish */
 };
 
-class pass_gimple_correct_state : public gimple_opt_pass
-{
+class pass_gimple_correct_state : public gimple_opt_pass {
 public:
-  pass_gimple_correct_state (gcc::context *ctxt)
-    : gimple_opt_pass (pass_data_gimple_correct_state, ctxt)
-  {}
+  pass_gimple_correct_state(gcc::context *ctxt)
+      : gimple_opt_pass(pass_data_gimple_correct_state, ctxt) {}
 
-  bool gate (
+  bool gate(
 #if (GCC_MAJOR >= 5)
- function *
+      function *
 #endif
-) { return true; }
+      ) {
+    return true;
+  }
 
-  unsigned int execute (
+  unsigned int execute(
 #if (GCC_MAJOR >= 5)
- function *
+      function *
 #endif
-) {
+      ) {
 #if (GCC_MAJOR >= 5)
     if (symtab->state < symtab_state::IPA_SSA)
       symtab->state = symtab_state::IPA_SSA;
@@ -2433,222 +2435,222 @@ public:
     return 0;
   }
 
-  opt_pass* clone() { return new pass_gimple_correct_state(g); }
+  opt_pass *clone() { return new pass_gimple_correct_state(g); }
 };
 
-gimple_opt_pass *make_pass_gimple_correct_state (gcc::context *ctxt) {
+gimple_opt_pass *make_pass_gimple_correct_state(gcc::context *ctxt) {
   return new pass_gimple_correct_state(ctxt);
 }
-//pass_gimple_correct_state pass_gimple_correct_state(g);
-#endif       /* #if ((GCC_MINOR == 9 && GCC_MAJOR == 4) || GCC_MAJOR >= 5) */
+// pass_gimple_correct_state pass_gimple_correct_state(g);
+#endif /* #if ((GCC_MINOR == 9 && GCC_MAJOR == 4) || GCC_MAJOR >= 5) */
 
-#endif       /* #if (GCC_MINOR <= 8 && GCC_MAJOR == 4) */
+#endif /* #if (GCC_MINOR <= 8 && GCC_MAJOR == 4) */
 
 #if (GCC_MINOR <= 8 && GCC_MAJOR == 4)
 
 /// pass_ipa_null - IPA pass that does nothing.
 static struct ipa_opt_pass_d pass_ipa_null = {
-  { IPA_PASS, "*ipa_null", /* name */
+    {
+     IPA_PASS, "*ipa_null", /* name */
 #if (GCC_MINOR >= 8 && GCC_MAJOR == 4)
-    OPTGROUP_NONE,         /* optinfo_flags */
+     OPTGROUP_NONE, /* optinfo_flags */
 #endif
-    gate_null,             /* gate */
-    NULL,                  /* execute */
-    NULL,                  /* sub */
-    NULL,                  /* next */
-    0,                     /* static_pass_number */
-    TV_NONE,               /* tv_id */
-    0,                     /* properties_required */
-    0,                     /* properties_provided */
-    0,                     /* properties_destroyed */
-    0,                     /* todo_flags_start */
-    0                      /* todo_flags_finish */
-},
-  NULL,                    /* generate_summary */
-  NULL,                    /* write_summary */
-  NULL,                    /* read_summary */
+     gate_null, /* gate */
+     NULL,      /* execute */
+     NULL,      /* sub */
+     NULL,      /* next */
+     0,         /* static_pass_number */
+     TV_NONE,   /* tv_id */
+     0,         /* properties_required */
+     0,         /* properties_provided */
+     0,         /* properties_destroyed */
+     0,         /* todo_flags_start */
+     0          /* todo_flags_finish */
+    },
+    NULL, /* generate_summary */
+    NULL, /* write_summary */
+    NULL, /* read_summary */
 #if (GCC_MINOR > 5)
-  NULL,                    /* write_optimization_summary */
-  NULL,                    /* read_optimization_summary */
+    NULL, /* write_optimization_summary */
+    NULL, /* read_optimization_summary */
 #else
-  NULL,                    /* function_read_summary */
+    NULL, /* function_read_summary */
 #endif
-  NULL,                    /* stmt_fixup */
-  0,                       /* function_transform_todo_flags_start */
-  NULL,                    /* function_transform */
-  NULL                     /* variable_transform */
+    NULL, /* stmt_fixup */
+    0,    /* function_transform_todo_flags_start */
+    NULL, /* function_transform */
+    NULL  /* variable_transform */
 };
 
 #else
 #if ((GCC_MINOR == 9 && GCC_MAJOR == 4) || GCC_MAJOR >= 5)
 static struct pass_data pass_data_ipa_null = {
-  IPA_PASS, "*ipa_null",       /* name */
-  OPTGROUP_NONE,               /* optinfo_flags */
+    IPA_PASS, "*ipa_null", /* name */
+    OPTGROUP_NONE, /* optinfo_flags */
 #if (GCC_MINOR == 9 && GCC_MAJOR == 4)
-  true,                        /* has_gate */
-  false,                       /* has_execute */
+    true,          /* has_gate */
+    false,         /* has_execute */
 #endif
-  TV_NONE,                     /* tv_id */
-  0,                           /* properties_required */
-  0,                           /* properties_provided */
-  0,                           /* properties_destroyed */
-  0,                           /* todo_flags_start */
-  0                            /* todo_flags_finish */
+    TV_NONE,       /* tv_id */
+    0,             /* properties_required */
+    0,             /* properties_provided */
+    0,             /* properties_destroyed */
+    0,             /* todo_flags_start */
+    0              /* todo_flags_finish */
 };
 
-class pass_ipa_null : public ipa_opt_pass_d
-{
+class pass_ipa_null : public ipa_opt_pass_d {
 public:
-  pass_ipa_null (gcc::context *ctxt)
-    : ipa_opt_pass_d (pass_data_ipa_null, ctxt,
-                      NULL,    /* generate_summary */
-                      NULL,    /* write_summary */
-                      NULL,    /* read_summary */
-                      NULL,    /* write_optimization_summary */
-                      NULL,    /* read_optimization_summary */
-                      NULL,    /* stmt_fixup */
-                      0,       /* function_transform_todo_flags_start */
-                      NULL,    /* function_transform */
-                      NULL     /* variable_transform */
-                     )
-  {}
+  pass_ipa_null(gcc::context *ctxt)
+      : ipa_opt_pass_d(pass_data_ipa_null, ctxt, NULL, /* generate_summary */
+                       NULL,                           /* write_summary */
+                       NULL,                           /* read_summary */
+                       NULL, /* write_optimization_summary */
+                       NULL, /* read_optimization_summary */
+                       NULL, /* stmt_fixup */
+                       0,    /* function_transform_todo_flags_start */
+                       NULL, /* function_transform */
+                       NULL  /* variable_transform */
+                       ) {}
 
-  bool gate (
+  bool gate(
 #if (GCC_MAJOR >= 5)
- function *
+      function *
 #endif
-) { return false; }
-  opt_pass* clone() { return new pass_ipa_null(g); }
+      ) {
+    return false;
+  }
+  opt_pass *clone() { return new pass_ipa_null(g); }
 };
 
-ipa_opt_pass_d *make_pass_ipa_null (gcc::context *ctxt) {
+ipa_opt_pass_d *make_pass_ipa_null(gcc::context *ctxt) {
   return new pass_ipa_null(ctxt);
 }
-//pass_ipa_null pass_ipa_null(g);
-#endif      /* #if ((GCC_MINOR == 9 && GCC_MAJOR == 4) || GCC_MAJOR >= 5) */
+// pass_ipa_null pass_ipa_null(g);
+#endif /* #if ((GCC_MINOR == 9 && GCC_MAJOR == 4) || GCC_MAJOR >= 5) */
 
-#endif      /* #if (GCC_MINOR <= 8 && GCC_MAJOR == 4) */
+#endif /* #if (GCC_MINOR <= 8 && GCC_MAJOR == 4) */
 
 #if (GCC_MINOR <= 8 && GCC_MAJOR == 4)
 
 /// pass_rtl_null - RTL pass that does nothing.
-static struct rtl_opt_pass pass_rtl_null = { { RTL_PASS, "*rtl_null", /* name */
+static struct rtl_opt_pass pass_rtl_null = {{
+    RTL_PASS, "*rtl_null", /* name */
 #if (GCC_MINOR >= 8 && GCC_MAJOR == 4)
-                                               OPTGROUP_NONE,/* optinfo_flags */
+    OPTGROUP_NONE, /* optinfo_flags */
 #endif
-                                               gate_null,             /* gate */
-                                               NULL,    /* execute */
-                                               NULL,    /* sub */
-                                               NULL,    /* next */
-                                               0,       /* static_pass_number */
-                                               TV_NONE, /* tv_id */
-                                               0, /* properties_required */
-                                               0, /* properties_provided */
-                                               0, /* properties_destroyed */
-                                               0, /* todo_flags_start */
-                                               0  /* todo_flags_finish */
-} };
+    gate_null, /* gate */
+    NULL,      /* execute */
+    NULL,      /* sub */
+    NULL,      /* next */
+    0,         /* static_pass_number */
+    TV_NONE,   /* tv_id */
+    0,         /* properties_required */
+    0,         /* properties_provided */
+    0,         /* properties_destroyed */
+    0,         /* todo_flags_start */
+    0          /* todo_flags_finish */
+}};
 
-#else                          /* #if (GCC_MINOR <= 8 && GCC_MAJOR == 4) */
+#else /* #if (GCC_MINOR <= 8 && GCC_MAJOR == 4) */
 #if ((GCC_MINOR == 9 && GCC_MAJOR == 4) || GCC_MAJOR >= 5)
 static struct pass_data pass_data_rtl_null = {
-  RTL_PASS, "*rtl_null",                /* name */
-  OPTGROUP_NONE,                        /* optinfo_flags */
+    RTL_PASS, "*rtl_null", /* name */
+    OPTGROUP_NONE, /* optinfo_flags */
 #if (GCC_MINOR == 9 && GCC_MAJOR == 4)
-  true,                                 /* has_gate */
-  false,                                /* has_execute */
+    true,          /* has_gate */
+    false,         /* has_execute */
 #endif
-  TV_NONE,                              /* tv_id */
-  0,                                    /* properties_required */
-  0,                                    /* properties_provided */
-  0,                                    /* properties_destroyed */
-  0,                                    /* todo_flags_start */
-  0                                     /* todo_flags_finish */
+    TV_NONE,       /* tv_id */
+    0,             /* properties_required */
+    0,             /* properties_provided */
+    0,             /* properties_destroyed */
+    0,             /* todo_flags_start */
+    0              /* todo_flags_finish */
 };
 
-class pass_rtl_null : public rtl_opt_pass
-{
+class pass_rtl_null : public rtl_opt_pass {
 public:
-  pass_rtl_null (gcc::context *ctxt)
-    : rtl_opt_pass (pass_data_rtl_null, ctxt)
-  {}
+  pass_rtl_null(gcc::context *ctxt) : rtl_opt_pass(pass_data_rtl_null, ctxt) {}
 
-  bool gate (
+  bool gate(
 #if (GCC_MAJOR >= 5)
- function *
+      function *
 #endif
-) { return false; }
-  opt_pass* clone() { return new pass_rtl_null(g); }
+      ) {
+    return false;
+  }
+  opt_pass *clone() { return new pass_rtl_null(g); }
 };
 
-rtl_opt_pass *make_pass_rtl_null (gcc::context *ctxt) {
+rtl_opt_pass *make_pass_rtl_null(gcc::context *ctxt) {
   return new pass_rtl_null(ctxt);
 }
-//pass_rtl_null pass_rtl_null(g);
-#endif      /* #if ((GCC_MINOR == 9 && GCC_MAJOR == 4) || GCC_MAJOR >= 5) */
+// pass_rtl_null pass_rtl_null(g);
+#endif /* #if ((GCC_MINOR == 9 && GCC_MAJOR == 4) || GCC_MAJOR >= 5) */
 
-#endif      /* #if (GCC_MINOR <= 8 && GCC_MAJOR == 4) */
+#endif /* #if (GCC_MINOR <= 8 && GCC_MAJOR == 4) */
 
 #if (GCC_MINOR <= 8 && GCC_MAJOR == 4)
 
 /// pass_simple_ipa_null - Simple IPA pass that does nothing.
-static struct simple_ipa_opt_pass pass_simple_ipa_null = { {
-  SIMPLE_IPA_PASS, "*simple_ipa_null", /* name */
+static struct simple_ipa_opt_pass pass_simple_ipa_null = {{
+    SIMPLE_IPA_PASS, "*simple_ipa_null", /* name */
 #if (GCC_MINOR >= 8 && GCC_MAJOR == 4)
-  OPTGROUP_NONE,                       /* optinfo_flags */
+    OPTGROUP_NONE, /* optinfo_flags */
 #endif
-  gate_null,                           /* gate */
-  NULL,                                /* execute */
-  NULL,                                /* sub */
-  NULL,                                /* next */
-  0,                                   /* static_pass_number */
-  TV_NONE,                             /* tv_id */
-  0,                                   /* properties_required */
-  0,                                   /* properties_provided */
-  0,                                   /* properties_destroyed */
-  0,                                   /* todo_flags_start */
-  0                                    /* todo_flags_finish */
-} };
+    gate_null, /* gate */
+    NULL,      /* execute */
+    NULL,      /* sub */
+    NULL,      /* next */
+    0,         /* static_pass_number */
+    TV_NONE,   /* tv_id */
+    0,         /* properties_required */
+    0,         /* properties_provided */
+    0,         /* properties_destroyed */
+    0,         /* todo_flags_start */
+    0          /* todo_flags_finish */
+}};
 
-#else                          /* #if (GCC_MINOR <= 8 && GCC_MAJOR == 4) */
+#else /* #if (GCC_MINOR <= 8 && GCC_MAJOR == 4) */
 #if ((GCC_MINOR == 9 && GCC_MAJOR == 4) || GCC_MAJOR >= 5)
 static struct pass_data pass_data_simple_ipa_null = {
-  SIMPLE_IPA_PASS, "*simple_ipa_null",  /* name */
-  OPTGROUP_NONE,                        /* optinfo_flags */
+    SIMPLE_IPA_PASS, "*simple_ipa_null", /* name */
+    OPTGROUP_NONE, /* optinfo_flags */
 #if (GCC_MINOR == 9 && GCC_MAJOR == 4)
-  true,                                 /* has_gate */
-  false,                                /* has_execute */
+    true,          /* has_gate */
+    false,         /* has_execute */
 #endif
-  TV_NONE,                              /* tv_id */
-  0,                                    /* properties_required */
-  0,                                    /* properties_provided */
-  0,                                    /* properties_destroyed */
-  0,                                    /* todo_flags_start */
-  0                                     /* todo_flags_finish */
+    TV_NONE,       /* tv_id */
+    0,             /* properties_required */
+    0,             /* properties_provided */
+    0,             /* properties_destroyed */
+    0,             /* todo_flags_start */
+    0              /* todo_flags_finish */
 };
 
-class pass_simple_ipa_null : public simple_ipa_opt_pass
-{
+class pass_simple_ipa_null : public simple_ipa_opt_pass {
 public:
-  pass_simple_ipa_null (gcc::context *ctxt)
-    : simple_ipa_opt_pass (pass_data_simple_ipa_null, ctxt)
-  {}
+  pass_simple_ipa_null(gcc::context *ctxt)
+      : simple_ipa_opt_pass(pass_data_simple_ipa_null, ctxt) {}
 
-  bool gate (
+  bool gate(
 #if (GCC_MAJOR >= 5)
- function *
+      function *
 #endif
-) { return false; }
-  opt_pass* clone() { return new pass_simple_ipa_null(g); }
+      ) {
+    return false;
+  }
+  opt_pass *clone() { return new pass_simple_ipa_null(g); }
 };
 
-simple_ipa_opt_pass *make_pass_simple_ipa_null (gcc::context *ctxt) {
+simple_ipa_opt_pass *make_pass_simple_ipa_null(gcc::context *ctxt) {
   return new pass_simple_ipa_null(ctxt);
 }
-//pass_simple_ipa_null pass_simple_ipa_null(g);
-#endif       /* #if ((GCC_MINOR == 9 && GCC_MAJOR == 4) || GCC_MAJOR >= 5) */
+// pass_simple_ipa_null pass_simple_ipa_null(g);
+#endif /* #if ((GCC_MINOR == 9 && GCC_MAJOR == 4) || GCC_MAJOR >= 5) */
 
-#endif       /* #if (GCC_MINOR <= 8 && GCC_MAJOR == 4) */
+#endif /* #if (GCC_MINOR <= 8 && GCC_MAJOR == 4) */
 
 // Garbage collector roots.
 extern const struct ggc_cache_tab gt_ggc_rc__gt_cache_h[];
@@ -2661,19 +2663,21 @@ struct FlagDescriptor {
 };
 
 static FlagDescriptor PluginFlags[] = {
-  { "debug-pass-structure", &DebugPassStructure },
-  { "debug-pass-arguments", &DebugPassArguments },
-  { "enable-gcc-optzns", &EnableGCCOptimizations }, { "emit-ir", &EmitIR },
-  { "emit-obj", &EmitObj },
-  { "save-gcc-output", &SaveGCCOutput }, { NULL, NULL } // Terminator.
+    {"debug-pass-structure", &DebugPassStructure},
+    {"debug-pass-arguments", &DebugPassArguments},
+    {"enable-gcc-optzns", &EnableGCCOptimizations},
+    {"emit-ir", &EmitIR},
+    {"emit-obj", &EmitObj},
+    {"save-gcc-output", &SaveGCCOutput},
+    {NULL, NULL} // Terminator.
 };
 
 /// llvm_plugin_info - Information about this plugin.  Users can access this
 /// using "gcc --help -v".
 static struct plugin_info llvm_plugin_info = {
-  LLVM_VERSION, // version
-                // TODO provide something useful here
-  NULL          // help
+    LLVM_VERSION, // version
+                  // TODO provide something useful here
+    NULL          // help
 };
 
 #ifndef DISABLE_VERSION_CHECK
@@ -2688,12 +2692,12 @@ static bool version_check(struct plugin_gcc_version *plugged_in_version) {
 /// plugin_init - Plugin initialization routine, called by GCC.  This is the
 /// first code executed in the plugin (except for constructors).  Configure
 /// the plugin and setup GCC, taking over optimization and code generation.
-int __attribute__((visibility("default"))) plugin_init(
-    struct plugin_name_args *plugin_info, struct plugin_gcc_version *
+int __attribute__((visibility("default")))
+plugin_init(struct plugin_name_args *plugin_info, struct plugin_gcc_version *
 #ifndef DISABLE_VERSION_CHECK
-        version
+                                                      version
 #endif
-    ) {
+            ) {
   const char *plugin_name = plugin_info->base_name;
   struct register_pass_info pass_info;
 
@@ -2796,7 +2800,7 @@ int __attribute__((visibility("default"))) plugin_init(
   // writing anything at all to the assembly file - only we get to write to it.
   TakeoverAsmOutput();
 
-  // Register our garbage collector roots.
+// Register our garbage collector roots.
 #if (GCC_MAJOR == 4)
   register_callback(plugin_name, PLUGIN_REGISTER_GGC_CACHES, NULL,
                     const_cast<ggc_cache_tab *>(gt_ggc_rc__gt_cache_h));
@@ -2824,17 +2828,17 @@ int __attribute__((visibility("default"))) plugin_init(
     register_callback(plugin_name, PLUGIN_PASS_MANAGER_SETUP, NULL, &pass_info);
 #endif
 
-    // Leave pass pass_early_local_passes::pass_fixup_cfg. ???
+// Leave pass pass_early_local_passes::pass_fixup_cfg. ???
 
-    // Leave pass_early_local_passes::pass_init_datastructures. ???
+// Leave pass_early_local_passes::pass_init_datastructures. ???
 
-    // Leave pass_early_local_passes::pass_expand_omp.
+// Leave pass_early_local_passes::pass_expand_omp.
 
-    // Leave pass_early_local_passes::pass_referenced_vars. ???
+// Leave pass_early_local_passes::pass_referenced_vars. ???
 
-    // Leave pass_early_local_passes::pass_build_ssa.
+// Leave pass_early_local_passes::pass_build_ssa.
 
-    // Turn off pass_lower_vector.
+// Turn off pass_lower_vector.
 #if (GCC_MINOR < 9 && GCC_MAJOR == 4)
     pass_info.pass = &pass_gimple_null.pass;
 #else
@@ -2846,19 +2850,19 @@ int __attribute__((visibility("default"))) plugin_init(
     pass_info.pos_op = PASS_POS_REPLACE;
     register_callback(plugin_name, PLUGIN_PASS_MANAGER_SETUP, NULL, &pass_info);
 
-    // Leave pass_early_local_passes::pass_early_warn_uninitialized.
+// Leave pass_early_local_passes::pass_early_warn_uninitialized.
 
-    // Leave pass_early_local_passes::pass_rebuild_cgraph_edges. ???
+// Leave pass_early_local_passes::pass_rebuild_cgraph_edges. ???
 
-    // Leave pass_inline_parameters.  Otherwise our vector lowering fails since
-    // immediates have not been propagated into builtin callsites.
+// Leave pass_inline_parameters.  Otherwise our vector lowering fails since
+// immediates have not been propagated into builtin callsites.
 
-    // Leave pass_early_inline.  This handles extern inline functions.
-    // TODO: Work out a way of making such functions visible in the LLVM IR.
+// Leave pass_early_inline.  This handles extern inline functions.
+// TODO: Work out a way of making such functions visible in the LLVM IR.
 
-    // Insert a pass that ensures that any newly inserted functions, for example
-    // those generated by OMP expansion, are processed before being converted to
-    // LLVM IR.
+// Insert a pass that ensures that any newly inserted functions, for example
+// those generated by OMP expansion, are processed before being converted to
+// LLVM IR.
 #if (GCC_MINOR < 9 && GCC_MAJOR == 4)
     pass_info.pass = &pass_gimple_correct_state.pass;
 #else
@@ -2870,7 +2874,7 @@ int __attribute__((visibility("default"))) plugin_init(
     pass_info.pos_op = PASS_POS_INSERT_BEFORE;
     register_callback(plugin_name, PLUGIN_PASS_MANAGER_SETUP, NULL, &pass_info);
 
-    // Turn off pass_early_local_passes::pass_all_early_optimizations.
+// Turn off pass_early_local_passes::pass_all_early_optimizations.
 #if (GCC_MINOR < 9 && GCC_MAJOR == 4)
     pass_info.pass = &pass_gimple_null.pass;
 #else
@@ -2882,16 +2886,16 @@ int __attribute__((visibility("default"))) plugin_init(
     pass_info.pos_op = PASS_POS_REPLACE;
     register_callback(plugin_name, PLUGIN_PASS_MANAGER_SETUP, NULL, &pass_info);
 
-    // Leave pass_early_local_passes::pass_release_ssa_names. ???
+// Leave pass_early_local_passes::pass_release_ssa_names. ???
 
-    // Leave pass_early_local_passes::pass_rebuild_cgraph_edges. ???
+// Leave pass_early_local_passes::pass_rebuild_cgraph_edges. ???
 
-    // Leave pass_inline_parameters.  Otherwise our vector lowering fails since
-    // immediates have not been propagated into builtin callsites.
+// Leave pass_inline_parameters.  Otherwise our vector lowering fails since
+// immediates have not been propagated into builtin callsites.
 
-    // Leave pass pass_early_local_passes::pass_tree_profile.
+// Leave pass pass_early_local_passes::pass_tree_profile.
 
-    // Turn off pass_ipa_increase_alignment.
+// Turn off pass_ipa_increase_alignment.
 #if (GCC_MINOR < 9 && GCC_MAJOR == 4)
     pass_info.pass = &pass_simple_ipa_null.pass;
 #else
@@ -2912,15 +2916,15 @@ int __attribute__((visibility("default"))) plugin_init(
     register_callback(plugin_name, PLUGIN_PASS_MANAGER_SETUP, NULL, &pass_info);
 #endif
 
-    // Leave pass_ipa_tm.
+// Leave pass_ipa_tm.
 
-    // Leave pass_ipa_lower_emutls. ???
+// Leave pass_ipa_lower_emutls. ???
 
-    // Leave pass_ipa_whole_program_visibility. ???
+// Leave pass_ipa_whole_program_visibility. ???
 
-    // Leave pass_ipa_profile. ???
+// Leave pass_ipa_profile. ???
 
-    // Turn off pass_ipa_cp.
+// Turn off pass_ipa_cp.
 #if (GCC_MINOR < 9 && GCC_MAJOR == 4)
     pass_info.pass = &pass_ipa_null.pass;
 #else
@@ -2932,9 +2936,9 @@ int __attribute__((visibility("default"))) plugin_init(
     pass_info.pos_op = PASS_POS_REPLACE;
     register_callback(plugin_name, PLUGIN_PASS_MANAGER_SETUP, NULL, &pass_info);
 
-    // Leave pass_ipa_cdtor_merge.
+// Leave pass_ipa_cdtor_merge.
 
-    // Turn off pass_ipa_inline.
+// Turn off pass_ipa_inline.
 #if (GCC_MINOR < 9 && GCC_MAJOR == 4)
     pass_info.pass = &pass_ipa_null.pass;
 #else
@@ -2946,7 +2950,7 @@ int __attribute__((visibility("default"))) plugin_init(
     pass_info.pos_op = PASS_POS_REPLACE;
     register_callback(plugin_name, PLUGIN_PASS_MANAGER_SETUP, NULL, &pass_info);
 
-    // Turn off pass_ipa_pure_const.
+// Turn off pass_ipa_pure_const.
 #if (GCC_MINOR < 9 && GCC_MAJOR == 4)
     pass_info.pass = &pass_ipa_null.pass;
 #else
@@ -2958,7 +2962,7 @@ int __attribute__((visibility("default"))) plugin_init(
     pass_info.pos_op = PASS_POS_REPLACE;
     register_callback(plugin_name, PLUGIN_PASS_MANAGER_SETUP, NULL, &pass_info);
 
-    // Turn off pass_ipa_reference.
+// Turn off pass_ipa_reference.
 #if (GCC_MINOR < 9 && GCC_MAJOR == 4)
     pass_info.pass = &pass_ipa_null.pass;
 #else
@@ -2979,7 +2983,7 @@ int __attribute__((visibility("default"))) plugin_init(
     register_callback(plugin_name, PLUGIN_PASS_MANAGER_SETUP, NULL, &pass_info);
 #endif
 
-    // Turn off pass_ipa_pta.
+// Turn off pass_ipa_pta.
 #if (GCC_MINOR < 9 && GCC_MAJOR == 4)
     pass_info.pass = &pass_simple_ipa_null.pass;
 #else
@@ -3000,12 +3004,12 @@ int __attribute__((visibility("default"))) plugin_init(
     register_callback(plugin_name, PLUGIN_PASS_MANAGER_SETUP, NULL, &pass_info);
 #endif
   }
-#if (GCC_MINOR <=8 && GCC_MAJOR == 4)
-  // Disable all LTO passes.
+#if (GCC_MINOR <= 8 && GCC_MAJOR == 4)
+// Disable all LTO passes.
 #if (GCC_MINOR < 9 && GCC_MAJOR == 4)
-    pass_info.pass = &pass_ipa_null.pass;
+  pass_info.pass = &pass_ipa_null.pass;
 #else
-    pass_info.pass = &pass_ipa_null;
+  pass_info.pass = &pass_ipa_null;
 #endif
   pass_info.reference_pass_name = "lto_gimple_out";
   pass_info.ref_pass_instance_number = 0;
@@ -3013,9 +3017,9 @@ int __attribute__((visibility("default"))) plugin_init(
   register_callback(plugin_name, PLUGIN_PASS_MANAGER_SETUP, NULL, &pass_info);
 
 #if (GCC_MINOR < 9 && GCC_MAJOR == 4)
-    pass_info.pass = &pass_ipa_null.pass;
+  pass_info.pass = &pass_ipa_null.pass;
 #else
-    pass_info.pass = &pass_ipa_null;
+  pass_info.pass = &pass_ipa_null;
 #endif
   pass_info.reference_pass_name = "lto_decls_out";
   pass_info.ref_pass_instance_number = 0;
@@ -3038,7 +3042,7 @@ int __attribute__((visibility("default"))) plugin_init(
                     NULL);
 
   if (!EnableGCCOptimizations) {
-    // Disable pass_lower_eh_dispatch.
+// Disable pass_lower_eh_dispatch.
 #if (GCC_MINOR < 9 && GCC_MAJOR == 4)
     pass_info.pass = &pass_gimple_null.pass;
 #else
@@ -3050,7 +3054,7 @@ int __attribute__((visibility("default"))) plugin_init(
     pass_info.pos_op = PASS_POS_REPLACE;
     register_callback(plugin_name, PLUGIN_PASS_MANAGER_SETUP, NULL, &pass_info);
 
-    // Disable pass_all_optimizations.
+// Disable pass_all_optimizations.
 #if (GCC_MINOR < 9 && GCC_MAJOR == 4)
     pass_info.pass = &pass_gimple_null.pass;
 #else
@@ -3062,9 +3066,9 @@ int __attribute__((visibility("default"))) plugin_init(
     pass_info.pos_op = PASS_POS_REPLACE;
     register_callback(plugin_name, PLUGIN_PASS_MANAGER_SETUP, NULL, &pass_info);
 
-    // Leave pass_tm_init.
+// Leave pass_tm_init.
 
-    // Disable pass_lower_complex_O0.
+// Disable pass_lower_complex_O0.
 #if (GCC_MINOR < 9 && GCC_MAJOR == 4)
     pass_info.pass = &pass_gimple_null.pass;
 #else
@@ -3076,7 +3080,7 @@ int __attribute__((visibility("default"))) plugin_init(
     pass_info.pos_op = PASS_POS_REPLACE;
     register_callback(plugin_name, PLUGIN_PASS_MANAGER_SETUP, NULL, &pass_info);
 
-    // Disable pass_cleanup_eh.
+// Disable pass_cleanup_eh.
 #if (GCC_MINOR < 9 && GCC_MAJOR == 4)
     pass_info.pass = &pass_gimple_null.pass;
 #else
@@ -3088,7 +3092,7 @@ int __attribute__((visibility("default"))) plugin_init(
     pass_info.pos_op = PASS_POS_REPLACE;
     register_callback(plugin_name, PLUGIN_PASS_MANAGER_SETUP, NULL, &pass_info);
 
-    // Disable pass_lower_resx.
+// Disable pass_lower_resx.
 #if (GCC_MINOR < 9 && GCC_MAJOR == 4)
     pass_info.pass = &pass_gimple_null.pass;
 #else
@@ -3100,7 +3104,7 @@ int __attribute__((visibility("default"))) plugin_init(
     pass_info.pos_op = PASS_POS_REPLACE;
     register_callback(plugin_name, PLUGIN_PASS_MANAGER_SETUP, NULL, &pass_info);
 
-    // Disable pass_nrv.
+// Disable pass_nrv.
 #if (GCC_MINOR < 9 && GCC_MAJOR == 4)
     pass_info.pass = &pass_gimple_null.pass;
 #else
@@ -3112,7 +3116,7 @@ int __attribute__((visibility("default"))) plugin_init(
     pass_info.pos_op = PASS_POS_REPLACE;
     register_callback(plugin_name, PLUGIN_PASS_MANAGER_SETUP, NULL, &pass_info);
 #if (GCC_MINOR <= 8 && GCC_MAJOR == 4)
-    // Disable pass_mudflap_2. ???
+// Disable pass_mudflap_2. ???
 #if (GCC_MINOR < 9 && GCC_MAJOR == 4)
     pass_info.pass = &pass_gimple_null.pass;
 #else
@@ -3123,7 +3127,7 @@ int __attribute__((visibility("default"))) plugin_init(
     pass_info.pos_op = PASS_POS_REPLACE;
     register_callback(plugin_name, PLUGIN_PASS_MANAGER_SETUP, NULL, &pass_info);
 #endif
-    // Disable pass_cleanup_cfg_post_optimizing.
+// Disable pass_cleanup_cfg_post_optimizing.
 #if (GCC_MINOR < 9 && GCC_MAJOR == 4)
     pass_info.pass = &pass_gimple_null.pass;
 #else
@@ -3138,7 +3142,7 @@ int __attribute__((visibility("default"))) plugin_init(
     // TODO: Disable pass_warn_function_noreturn?
   }
 
-  // Replace rtl expansion with a pass that converts functions to LLVM IR.
+// Replace rtl expansion with a pass that converts functions to LLVM IR.
 #if (GCC_MINOR < 9 && GCC_MAJOR == 4)
   pass_info.pass = &pass_rtl_emit_function.pass;
 #else
@@ -3150,7 +3154,7 @@ int __attribute__((visibility("default"))) plugin_init(
   pass_info.pos_op = PASS_POS_REPLACE;
   register_callback(plugin_name, PLUGIN_PASS_MANAGER_SETUP, NULL, &pass_info);
 
-  // Turn off all other rtl passes.
+// Turn off all other rtl passes.
 #if (GCC_MINOR < 8 && GCC_MAJOR == 4)
   pass_info.pass = &pass_gimple_null.pass;
 #else

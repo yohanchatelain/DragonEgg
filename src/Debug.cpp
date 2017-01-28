@@ -48,7 +48,7 @@ extern "C" {
 #include "vec.h"
 #include "input.h"
 #include "alias.h"
-#include "inchash.h"  
+#include "inchash.h"
 #include "double-int.h"
 #include "libiberty.h"
 #endif
@@ -70,7 +70,7 @@ using namespace llvm;
 using namespace llvm::dwarf;
 
 // We're not even going to try to get DebugInfo right
-#if LLVM_VERSION_LE(3,6)
+#if LLVM_BELOW_OR(3, 6)
 
 /// DirectoryAndFile - Extract the directory and file name from a path.  If no
 /// directory is specified, then use the source working directory.
@@ -218,7 +218,7 @@ static StringRef getLinkageName(tree Node) {
 #else
         !DECL_ABSTRACT(Node)
 #endif
-) {
+            ) {
       return StringRef(IDENTIFIER_POINTER(DECL_ASSEMBLER_NAME(Node)));
     }
   }
@@ -226,9 +226,9 @@ static StringRef getLinkageName(tree Node) {
 }
 
 DebugInfo::DebugInfo(Module *m)
-    : M(*m), VMContext(M.getContext()), Builder(M), DeclareFn(0),
-    ValueFn(0), CurFullPath(""), PrevFullPath(""), CurLineNo(0), PrevLineNo(0),
-    PrevBB(NULL) {}
+    : M(*m), VMContext(M.getContext()), Builder(M), DeclareFn(0), ValueFn(0),
+      CurFullPath(""), PrevFullPath(""), CurLineNo(0), PrevLineNo(0),
+      PrevBB(NULL) {}
 
 /// getFunctionName - Get function name for the given FnDecl. If the
 /// name is constructred on demand (e.g. C++ destructor) then the name
@@ -255,25 +255,26 @@ void DebugInfo::EmitFunctionStart(tree FnDecl, Function *Fn) {
 
   unsigned lineno = CurLineNo;
 
-// Below line commented by Arun in attempt to compile using llvm-3.6
-//  std::map<tree_node *, WeakVH>::iterator I = SPCache.find(FnDecl);
-// Below line added by Arun in attempt to compile using llvm-3.6
+  // Below line commented by Arun in attempt to compile using llvm-3.6
+  //  std::map<tree_node *, WeakVH>::iterator I = SPCache.find(FnDecl);
+  // Below line added by Arun in attempt to compile using llvm-3.6
   std::map<tree_node *, TrackingMDRef>::iterator I = SPCache.find(FnDecl);
   if (I != SPCache.end()) {
     DISubprogram SPDecl(cast<MDNode>(I->second));
     DISubprogram SP = CreateSubprogramDefinition(SPDecl, lineno, Fn);
-    // Below line commented by Tarun in attempt to compile using llvm-3.6
-    // SPDecl->replaceAllUsesWith(SP);
-#if (GCC_MAJOR >= 5)  // NOTE this might be a llvm thing in which case the #if is incorrect
+// Below line commented by Tarun in attempt to compile using llvm-3.6
+// SPDecl->replaceAllUsesWith(SP);
+#if (GCC_MAJOR >=                                                              \
+     5) // NOTE this might be a llvm thing in which case the #if is incorrect
 // Below line commented by Arun to deal with a segfault in test DeclLoc.cpp
 //    SPDecl.replaceAllUsesWith(SP);
 #endif
 
     // Push function on region stack.
-// Below two lines commented by Arun in attempt to compile using llvm-3.6
-//    RegionStack.push_back(WeakVH(SP));
-//    RegionMap[FnDecl] = WeakVH(SP);
-// Below two lines added by Arun in attempt to compile using llvm-3.6
+    // Below two lines commented by Arun in attempt to compile using llvm-3.6
+    //    RegionStack.push_back(WeakVH(SP));
+    //    RegionMap[FnDecl] = WeakVH(SP);
+    // Below two lines added by Arun in attempt to compile using llvm-3.6
     RegionStack.push_back(TrackingMDRef(SP));
     RegionMap[FnDecl] = TrackingMDRef(SP);
     return;
@@ -286,9 +287,9 @@ void DebugInfo::EmitFunctionStart(tree FnDecl, Function *Fn) {
       DECL_ABSTRACT_ORIGIN(FnDecl) != FnDecl)
     ArtificialFnWithAbstractOrigin = true;
 
-  DIDescriptor SPContext =
-      ArtificialFnWithAbstractOrigin ? getOrCreateFile(main_input_filename)
-                                     : findRegion(DECL_CONTEXT(FnDecl));
+  DIDescriptor SPContext = ArtificialFnWithAbstractOrigin
+                               ? getOrCreateFile(main_input_filename)
+                               : findRegion(DECL_CONTEXT(FnDecl));
 
   // Creating context may have triggered creation of this SP descriptor. So
   // check the cache again.
@@ -296,17 +297,18 @@ void DebugInfo::EmitFunctionStart(tree FnDecl, Function *Fn) {
   if (I != SPCache.end()) {
     DISubprogram SPDecl(cast<MDNode>(I->second));
     DISubprogram SP = CreateSubprogramDefinition(SPDecl, lineno, Fn);
-    // Below line commented by Tarun in attempt to compile using llvm-3.6
-    // SPDecl->replaceAllUsesWith(SP);
-#if (GCC_MAJOR >= 5)  // NOTE this might be a llvm thing in which case the #if is incorrect
+// Below line commented by Tarun in attempt to compile using llvm-3.6
+// SPDecl->replaceAllUsesWith(SP);
+#if (GCC_MAJOR >=                                                              \
+     5) // NOTE this might be a llvm thing in which case the #if is incorrect
     SPDecl.replaceAllUsesWith(SP);
 #endif
 
     // Push function on region stack.
-// Below two lines commented by Arun in attempt to compile using llvm-3.6
-//    RegionStack.push_back(WeakVH(SP));
-//    RegionMap[FnDecl] = WeakVH(SP);
-// Below two lines added by Arun in attempt to compile using llvm-3.6
+    // Below two lines commented by Arun in attempt to compile using llvm-3.6
+    //    RegionStack.push_back(WeakVH(SP));
+    //    RegionMap[FnDecl] = WeakVH(SP);
+    // Below two lines added by Arun in attempt to compile using llvm-3.6
     RegionStack.push_back(TrackingMDRef(SP));
     RegionMap[FnDecl] = TrackingMDRef(SP);
     return;
@@ -339,25 +341,25 @@ void DebugInfo::EmitFunctionStart(tree FnDecl, Function *Fn) {
       FNType, Fn->hasInternalLinkage(), true /*definition*/, Virtuality, VIndex,
       ContainingType, DECL_ARTIFICIAL(FnDecl), optimize, Fn);
 
-// Below line commented by Arun in attempt to compile using llvm-3.6
-//  SPCache[FnDecl] = WeakVH(SP);
-// Below line added by Arun in attempt to compile using llvm-3.6
+  // Below line commented by Arun in attempt to compile using llvm-3.6
+  //  SPCache[FnDecl] = WeakVH(SP);
+  // Below line added by Arun in attempt to compile using llvm-3.6
   SPCache[FnDecl] = TrackingMDRef(SP);
 
   // Push function on region stack.
-// Below two lines commented by Arun in attempt to compile using llvm-3.6
-//  RegionStack.push_back(WeakVH(SP));
-//  RegionMap[FnDecl] = WeakVH(SP);
-// Below two lines added by Arun in attempt to compile using llvm-3.6
+  // Below two lines commented by Arun in attempt to compile using llvm-3.6
+  //  RegionStack.push_back(WeakVH(SP));
+  //  RegionMap[FnDecl] = WeakVH(SP);
+  // Below two lines added by Arun in attempt to compile using llvm-3.6
   RegionStack.push_back(TrackingMDRef(SP));
   RegionMap[FnDecl] = TrackingMDRef(SP);
 }
 
 /// getOrCreateNameSpace - Get name space descriptor for the tree node.
 DINameSpace DebugInfo::getOrCreateNameSpace(tree Node, DIDescriptor Context) {
-// Below line commented by Arun in attempt to compile using llvm-3.6
-//  std::map<tree_node *, WeakVH>::iterator I = NameSpaceCache.find(Node);
-// Below line added by Arun in attempt to compile using llvm-3.6
+  // Below line commented by Arun in attempt to compile using llvm-3.6
+  //  std::map<tree_node *, WeakVH>::iterator I = NameSpaceCache.find(Node);
+  // Below line added by Arun in attempt to compile using llvm-3.6
   std::map<tree_node *, TrackingMDRef>::iterator I = NameSpaceCache.find(Node);
   if (I != NameSpaceCache.end())
     return DINameSpace(cast<MDNode>(I->second));
@@ -366,9 +368,9 @@ DINameSpace DebugInfo::getOrCreateNameSpace(tree Node, DIDescriptor Context) {
   DINameSpace DNS = Builder.createNameSpace(
       Context, GetNodeName(Node), getOrCreateFile(Loc.file), Loc.line);
 
-// Below line commented by Arun in attempt to compile using llvm-3.6
-//  NameSpaceCache[Node] = WeakVH(DNS);
-// Below line added by Arun in attempt to compile using llvm-3.6
+  // Below line commented by Arun in attempt to compile using llvm-3.6
+  //  NameSpaceCache[Node] = WeakVH(DNS);
+  // Below line added by Arun in attempt to compile using llvm-3.6
   NameSpaceCache[Node] = TrackingMDRef(DNS);
   return DNS;
 }
@@ -378,9 +380,9 @@ DIDescriptor DebugInfo::findRegion(tree Node) {
   if (Node == NULL_TREE)
     return getOrCreateFile(main_input_filename);
 
-// Below line commented by Arun in attempt to compile using llvm-3.6
-//  std::map<tree_node *, WeakVH>::iterator I = RegionMap.find(Node);
-// Below line added by Arun in attempt to compile using llvm-3.6
+  // Below line commented by Arun in attempt to compile using llvm-3.6
+  //  std::map<tree_node *, WeakVH>::iterator I = RegionMap.find(Node);
+  // Below line added by Arun in attempt to compile using llvm-3.6
   std::map<tree_node *, TrackingMDRef>::iterator I = RegionMap.find(Node);
   if (I != RegionMap.end())
     if (MDNode *R = dyn_cast_or_null<MDNode>(&*I->second))
@@ -484,9 +486,9 @@ void DebugInfo::EmitGlobalVariable(GlobalVariable *GV, tree decl) {
   if (DECL_CONTEXT(decl))
     if (!isa<FUNCTION_DECL>(DECL_CONTEXT(decl)))
       LinkageName = GV->getName();
-  Builder.createGlobalVariable(
-      findRegion(DECL_CONTEXT(decl)), DispName, LinkageName,
-      getOrCreateFile(Loc.file), Loc.line, TyD, GV->hasInternalLinkage(), GV);
+  Builder.createGlobalVariable(findRegion(DECL_CONTEXT(decl)), DispName,
+                               LinkageName, getOrCreateFile(Loc.file), Loc.line,
+                               TyD, GV->hasInternalLinkage(), GV);
 }
 
 /// createBasicType - Create BasicType.
@@ -550,32 +552,33 @@ DIType DebugInfo::createMethodType(tree type) {
   // Create a  place holder type first. The may be used as a context
   // for the argument types.
   llvm::DIType FwdType = Builder.createReplaceableForwardDecl(
-    llvm::dwarf::DW_TAG_subroutine_type, StringRef(),
-    findRegion(TYPE_CONTEXT(type)), getOrCreateFile(main_input_filename),
-    0, 0, 0, 0);
+      llvm::dwarf::DW_TAG_subroutine_type, StringRef(),
+      findRegion(TYPE_CONTEXT(type)), getOrCreateFile(main_input_filename), 0,
+      0, 0, 0);
   llvm::MDNode *FTN = FwdType;
-#if (GCC_MAJOR >= 5)  // NOTE this might be a llvm thing in which case the #if is incorrect
+#if (GCC_MAJOR >=                                                              \
+     5) // NOTE this might be a llvm thing in which case the #if is incorrect
   llvm::TrackingMDRef FwdTypeNode(FTN);
 #else
   llvm::TrackingMDNodeRef FwdTypeNode(FTN);
 #endif
-// Below line commented by Arun in attempt to compile using llvm-3.6
-//  TypeCache[type] = WeakVH(FwdType);
-// Below line added by Arun in attempt to compile using llvm-3.6
+  // Below line commented by Arun in attempt to compile using llvm-3.6
+  //  TypeCache[type] = WeakVH(FwdType);
+  // Below line added by Arun in attempt to compile using llvm-3.6
   TypeCache[type] = TrackingMDRef(FwdType);
 
   // Push the struct on region stack.
-// Below two lines commented by Arun in attempt to compile using llvm-3.6
-//  RegionStack.push_back(WeakVH(FwdType));
-//  RegionMap[type] = WeakVH(FwdType);
-// Below two lines added by Arun in attempt to compile using llvm-3.6
+  // Below two lines commented by Arun in attempt to compile using llvm-3.6
+  //  RegionStack.push_back(WeakVH(FwdType));
+  //  RegionMap[type] = WeakVH(FwdType);
+  // Below two lines added by Arun in attempt to compile using llvm-3.6
   RegionStack.push_back(TrackingMDRef(FwdType));
   RegionMap[type] = TrackingMDRef(FwdType);
 
-// Below line commented by Arun in attempt to compile using llvm-3.6
-//  llvm::SmallVector<Value*, 16> EltTys;
-// Below line added by Arun in attempt to compile using llvm-3.6
-  llvm::SmallVector<Metadata*, 16> EltTys;
+  // Below line commented by Arun in attempt to compile using llvm-3.6
+  //  llvm::SmallVector<Value*, 16> EltTys;
+  // Below line added by Arun in attempt to compile using llvm-3.6
+  llvm::SmallVector<Metadata *, 16> EltTys;
 
   // Add the result type at least.
   EltTys.push_back(getOrCreateType(TREE_TYPE(type)));
@@ -599,16 +602,15 @@ DIType DebugInfo::createMethodType(tree type) {
   llvm::DITypeArray EltTypeArray = Builder.getOrCreateTypeArray(EltTys);
 
   RegionStack.pop_back();
-// Below line commented by Arun in attempt to compile using llvm-3.6
-//  std::map<tree_node *, WeakVH>::iterator RI = RegionMap.find(type);
-// Below line added by Arun in attempt to compile using llvm-3.6
+  // Below line commented by Arun in attempt to compile using llvm-3.6
+  //  std::map<tree_node *, WeakVH>::iterator RI = RegionMap.find(type);
+  // Below line added by Arun in attempt to compile using llvm-3.6
   std::map<tree_node *, TrackingMDRef>::iterator RI = RegionMap.find(type);
   if (RI != RegionMap.end())
     RegionMap.erase(RI);
 
   llvm::DIType RealType = Builder.createSubroutineType(
-      getOrCreateFile(main_input_filename),
-      EltTypeArray);
+      getOrCreateFile(main_input_filename), EltTypeArray);
 
   // Now that we have a real decl for the struct, replace anything using the
   // old decl with the new one.  This will recursively update the debug info.
@@ -638,9 +640,9 @@ DIType DebugInfo::createPointerType(tree type) {
           Tag, findRegion(DECL_CONTEXT(TyName)), GetNodeName(TyName),
           getOrCreateFile(TypeNameLoc.file), TypeNameLoc.line, 0 /*size*/,
           0 /*align*/, 0 /*offset */, 0 /*flags*/, FromTy);
-// Below line commented by Arun in attempt to compile using llvm-3.6
-//      TypeCache[TyName] = WeakVH(Ty);
-// Below line added by Arun in attempt to compile using llvm-3.6
+      // Below line commented by Arun in attempt to compile using llvm-3.6
+      //      TypeCache[TyName] = WeakVH(Ty);
+      // Below line added by Arun in attempt to compile using llvm-3.6
       TypeCache[TyName] = TrackingMDRef(Ty);
       return Ty;
     }
@@ -659,10 +661,10 @@ DIType DebugInfo::createArrayType(tree type) {
   // Add the dimensions of the array.  FIXME: This loses CV qualifiers from
   // interior arrays, do we care?  Why aren't nested arrays represented the
   // obvious/recursive way?
-// Below line commented by Arun in attempt to compile using llvm-3.6
-//  llvm::SmallVector<Value*, 8> Subscripts;
-// Below line commented by Arun in attempt to compile using llvm-3.6
-  llvm::SmallVector<Metadata*, 8> Subscripts;
+  // Below line commented by Arun in attempt to compile using llvm-3.6
+  //  llvm::SmallVector<Value*, 8> Subscripts;
+  // Below line commented by Arun in attempt to compile using llvm-3.6
+  llvm::SmallVector<Metadata *, 8> Subscripts;
 
   // There will be ARRAY_TYPE nodes for each rank.  Followed by the derived
   // type.
@@ -702,7 +704,7 @@ DIType DebugInfo::createArrayType(tree type) {
 /// createEnumType - Create EnumType.
 DIType DebugInfo::createEnumType(tree type) {
   // enum { a, b, ..., z };
-  llvm::SmallVector<Metadata*, 32> Elements;
+  llvm::SmallVector<Metadata *, 32> Elements;
 
   if (TYPE_SIZE(type)) {
     for (tree Link = TYPE_VALUES(type); Link; Link = TREE_CHAIN(Link)) {
@@ -723,11 +725,11 @@ DIType DebugInfo::createEnumType(tree type) {
     // Incomplete enums do not  have any location info.
     Loc = GetNodeLocation(TREE_CHAIN(type), false);
 
-  return CreateCompositeType(
-      llvm::dwarf::DW_TAG_enumeration_type, findRegion(TYPE_CONTEXT(type)),
-      GetNodeName(type), getOrCreateFile(Loc.file), Loc.line,
-      NodeSizeInBits(type), NodeAlignInBits(type), 0, 0, llvm::DIType(),
-      EltArray);
+  return CreateCompositeType(llvm::dwarf::DW_TAG_enumeration_type,
+                             findRegion(TYPE_CONTEXT(type)), GetNodeName(type),
+                             getOrCreateFile(Loc.file), Loc.line,
+                             NodeSizeInBits(type), NodeAlignInBits(type), 0, 0,
+                             llvm::DIType(), EltArray);
 }
 
 /// createStructType - Create StructType for struct or union or class.
@@ -738,24 +740,24 @@ DIType DebugInfo::createStructType(tree type) {
       isa<RECORD_TYPE>(type) ? DW_TAG_structure_type : DW_TAG_union_type;
 
   unsigned RunTimeLang = 0;
-  //TODO  if (TYPE_LANG_SPECIFIC (type)
-  //TODO      && lang_hooks.types.is_runtime_specific_type (type))
-  //TODO    {
-  //TODO      unsigned CULang = TheCU.getLanguage();
-  //TODO      switch (CULang) {
-  //TODO      case DW_LANG_ObjC_plus_plus :
-  //TODO        RunTimeLang = DW_LANG_ObjC_plus_plus;
-  //TODO        break;
-  //TODO      case DW_LANG_ObjC :
-  //TODO        RunTimeLang = DW_LANG_ObjC;
-  //TODO        break;
-  //TODO      case DW_LANG_C_plus_plus :
-  //TODO        RunTimeLang = DW_LANG_C_plus_plus;
-  //TODO        break;
-  //TODO      default:
-  //TODO        break;
-  //TODO      }
-  //TODO    }
+  // TODO  if (TYPE_LANG_SPECIFIC (type)
+  // TODO      && lang_hooks.types.is_runtime_specific_type (type))
+  // TODO    {
+  // TODO      unsigned CULang = TheCU.getLanguage();
+  // TODO      switch (CULang) {
+  // TODO      case DW_LANG_ObjC_plus_plus :
+  // TODO        RunTimeLang = DW_LANG_ObjC_plus_plus;
+  // TODO        break;
+  // TODO      case DW_LANG_ObjC :
+  // TODO        RunTimeLang = DW_LANG_ObjC;
+  // TODO        break;
+  // TODO      case DW_LANG_C_plus_plus :
+  // TODO        RunTimeLang = DW_LANG_C_plus_plus;
+  // TODO        break;
+  // TODO      default:
+  // TODO        break;
+  // TODO      }
+  // TODO    }
 
   // Records and classes and unions can all be recursive.  To handle them,
   // we first generate a debug descriptor for the struct as a forward
@@ -771,9 +773,9 @@ DIType DebugInfo::createStructType(tree type) {
   // Check if this type is created while creating context information
   // descriptor.
   {
-// Below line commented by Arun in attempt to compile using llvm-3.6
-//    std::map<tree_node *, WeakVH>::iterator I = TypeCache.find(type);
-// Below line added by Arun in attempt to compile using llvm-3.6
+    // Below line commented by Arun in attempt to compile using llvm-3.6
+    //    std::map<tree_node *, WeakVH>::iterator I = TypeCache.find(type);
+    // Below line added by Arun in attempt to compile using llvm-3.6
     std::map<tree_node *, TrackingMDRef>::iterator I = TypeCache.find(type);
     if (I != TypeCache.end())
       if (MDNode *TN = dyn_cast_or_null<MDNode>(&*I->second))
@@ -781,8 +783,8 @@ DIType DebugInfo::createStructType(tree type) {
   }
 
   llvm::DIType FwdDecl = Builder.createReplaceableForwardDecl(
-      Tag, GetNodeName(type), TyContext, getOrCreateFile(Loc.file), Loc.line,
-      0, 0, 0);
+      Tag, GetNodeName(type), TyContext, getOrCreateFile(Loc.file), Loc.line, 0,
+      0, 0);
 
   if (TYPE_SIZE(type) == 0)
     // forward declaration,
@@ -790,26 +792,27 @@ DIType DebugInfo::createStructType(tree type) {
 
   // Insert into the TypeCache so that recursive uses will find it.
   llvm::MDNode *FDN = FwdDecl;
-#if (GCC_MAJOR >= 5)  // NOTE this might be a llvm thing in which case the #if is incorrect
+#if (GCC_MAJOR >=                                                              \
+     5) // NOTE this might be a llvm thing in which case the #if is incorrect
   llvm::TrackingMDRef FwdDeclNode(FDN);
 #else
   llvm::TrackingMDNodeRef FwdDeclNode(FDN);
 #endif
-// Below line commented by Arun in attempt to compile using llvm-3.6
-//  TypeCache[type] = WeakVH(FwdDecl);
-// Below line commented by Arun in attempt to compile using llvm-3.6
+  // Below line commented by Arun in attempt to compile using llvm-3.6
+  //  TypeCache[type] = WeakVH(FwdDecl);
+  // Below line commented by Arun in attempt to compile using llvm-3.6
   TypeCache[type] = TrackingMDRef(FwdDecl);
 
   // Push the struct on region stack.
-// Below two lines commented by Arun in attempt to compile using llvm-3.6
-//  RegionStack.push_back(WeakVH(FwdDecl));
-//  RegionMap[type] = WeakVH(FwdDecl);
-// Below two lines added by Arun in attempt to compile using llvm-3.6
+  // Below two lines commented by Arun in attempt to compile using llvm-3.6
+  //  RegionStack.push_back(WeakVH(FwdDecl));
+  //  RegionMap[type] = WeakVH(FwdDecl);
+  // Below two lines added by Arun in attempt to compile using llvm-3.6
   RegionStack.push_back(TrackingMDRef(FwdDecl));
   RegionMap[type] = TrackingMDRef(FwdDecl);
 
   // Convert all the elements.
-  llvm::SmallVector<Metadata*, 16> EltTys;
+  llvm::SmallVector<Metadata *, 16> EltTys;
 
   if (tree binfo = TYPE_BINFO(type)) {
     for (unsigned i = 0, e = BINFO_N_BASE_BINFOS(binfo); i != e; ++i) {
@@ -835,9 +838,9 @@ DIType DebugInfo::createStructType(tree type) {
       if (BINFO_VIRTUAL_P(BInfo))
         Offset = 0 - getInt64(BINFO_VPTR_FIELD(BInfo), false);
       // FIXME : name, size, align etc...
-      DIType DTy = CreateDerivedType(
-          DW_TAG_inheritance, findRegion(type), StringRef(), llvm::DIFile(), 0,
-          0, 0, Offset, BFlags, BaseClass);
+      DIType DTy =
+          CreateDerivedType(DW_TAG_inheritance, findRegion(type), StringRef(),
+                            llvm::DIFile(), 0, 0, 0, Offset, BFlags, BaseClass);
       EltTys.push_back(DTy);
     }
   }
@@ -895,9 +898,9 @@ DIType DebugInfo::createStructType(tree type) {
     if (DECL_P(Member) && DECL_IGNORED_P(Member))
       continue;
 
-// Below line commented by Arun in attempt to compile using llvm-3.6
-//    std::map<tree_node *, WeakVH>::iterator I = SPCache.find(Member);
-// Below line added by Arun in attempt to compile using llvm-3.6
+    // Below line commented by Arun in attempt to compile using llvm-3.6
+    //    std::map<tree_node *, WeakVH>::iterator I = SPCache.find(Member);
+    // Below line added by Arun in attempt to compile using llvm-3.6
     std::map<tree_node *, TrackingMDRef>::iterator I = SPCache.find(Member);
     if (I != SPCache.end())
       EltTys.push_back(DISubprogram(cast<MDNode>(I->second)));
@@ -918,7 +921,7 @@ DIType DebugInfo::createStructType(tree type) {
         if (tree_fits_shwi_p(DECL_VINDEX(Member)))
           VIndex = tree_to_shwi(DECL_VINDEX(Member));
 #endif
-         Virtuality = dwarf::DW_VIRTUALITY_virtual;
+        Virtuality = dwarf::DW_VIRTUALITY_virtual;
         ContainingType = getOrCreateType(DECL_CONTEXT(Member));
       }
       DISubprogram SP = CreateSubprogram(
@@ -927,9 +930,9 @@ DIType DebugInfo::createStructType(tree type) {
           Virtuality, VIndex, ContainingType, DECL_ARTIFICIAL(Member),
           optimize);
       EltTys.push_back(SP);
-// Below line commented by Arun in attempt to compile using llvm-3.6
-//      SPCache[Member] = WeakVH(SP);
-// Below line added by Arun in attempt to compile using llvm-3.6
+      // Below line commented by Arun in attempt to compile using llvm-3.6
+      //      SPCache[Member] = WeakVH(SP);
+      // Below line added by Arun in attempt to compile using llvm-3.6
       SPCache[Member] = TrackingMDRef(SP);
     }
   }
@@ -937,9 +940,9 @@ DIType DebugInfo::createStructType(tree type) {
   llvm::DIArray Elements = Builder.getOrCreateArray(EltTys);
 
   RegionStack.pop_back();
-// Below line commented by Arun in attempt to compile using llvm-3.6
-//  std::map<tree_node *, WeakVH>::iterator RI = RegionMap.find(type);
-// Below line added by Arun in attempt to compile using llvm-3.6
+  // Below line commented by Arun in attempt to compile using llvm-3.6
+  //  std::map<tree_node *, WeakVH>::iterator RI = RegionMap.find(type);
+  // Below line added by Arun in attempt to compile using llvm-3.6
   std::map<tree_node *, TrackingMDRef>::iterator RI = RegionMap.find(type);
   if (RI != RegionMap.end())
     RegionMap.erase(RI);
@@ -954,9 +957,9 @@ DIType DebugInfo::createStructType(tree type) {
       getOrCreateFile(Loc.file), Loc.line, NodeSizeInBits(type),
       NodeAlignInBits(type), 0, SFlags, llvm::DIType(), Elements, RunTimeLang,
       ContainingType);
-// Below line commented by Arun in attempt to compile using llvm-3.6
-//  RegionMap[type] = WeakVH(RealDecl);
-// Below line added by Arun in attempt to compile using llvm-3.6
+  // Below line commented by Arun in attempt to compile using llvm-3.6
+  //  RegionMap[type] = WeakVH(RealDecl);
+  // Below line added by Arun in attempt to compile using llvm-3.6
   RegionMap[type] = TrackingMDRef(RealDecl);
 
   // Now that we have a real decl for the struct, replace anything using the
@@ -974,9 +977,9 @@ DIType DebugInfo::createVariantType(tree type, DIType MainTy) {
 
   DIType Ty;
   if (tree TyDef = TYPE_NAME(type)) {
-// Below line commented by Arun in attempt to compile using llvm-3.6
-//    std::map<tree_node *, WeakVH>::iterator I = TypeCache.find(TyDef);
-// Below line added by Arun in attempt to compile using llvm-3.6
+    // Below line commented by Arun in attempt to compile using llvm-3.6
+    //    std::map<tree_node *, WeakVH>::iterator I = TypeCache.find(TyDef);
+    // Below line added by Arun in attempt to compile using llvm-3.6
     std::map<tree_node *, TrackingMDRef>::iterator I = TypeCache.find(TyDef);
     if (I != TypeCache.end())
       if (I->second)
@@ -987,34 +990,34 @@ DIType DebugInfo::createVariantType(tree type, DIType MainTy) {
           DW_TAG_typedef, findRegion(DECL_CONTEXT(TyDef)), GetNodeName(TyDef),
           getOrCreateFile(TypeDefLoc.file), TypeDefLoc.line, 0 /*size*/,
           0 /*align*/, 0 /*offset */, 0 /*flags*/, MainTy);
-// Below line commented by Arun in attempt to compile using llvm-3.6
-//      TypeCache[TyDef] = WeakVH(Ty);
-// Below line added by Arun in attempt to compile using llvm-3.6
+      // Below line commented by Arun in attempt to compile using llvm-3.6
+      //      TypeCache[TyDef] = WeakVH(Ty);
+      // Below line added by Arun in attempt to compile using llvm-3.6
       TypeCache[TyDef] = TrackingMDRef(Ty);
       return Ty;
     }
   }
 
   if (TYPE_VOLATILE(type)) {
-    Ty = CreateDerivedType(
-        DW_TAG_volatile_type, findRegion(TYPE_CONTEXT(type)), StringRef(),
-        getOrCreateFile(main_input_filename), 0 /*line no*/,
-        NodeSizeInBits(type), NodeAlignInBits(type), 0 /*offset */,
-        0 /* flags */, MainTy);
+    Ty = CreateDerivedType(DW_TAG_volatile_type, findRegion(TYPE_CONTEXT(type)),
+                           StringRef(), getOrCreateFile(main_input_filename),
+                           0 /*line no*/, NodeSizeInBits(type),
+                           NodeAlignInBits(type), 0 /*offset */, 0 /* flags */,
+                           MainTy);
     MainTy = Ty;
   }
 
   if (TYPE_READONLY(type))
-    Ty = CreateDerivedType(
-        DW_TAG_const_type, findRegion(TYPE_CONTEXT(type)), StringRef(),
-        getOrCreateFile(main_input_filename), 0 /*line no*/,
-        NodeSizeInBits(type), NodeAlignInBits(type), 0 /*offset */,
-        0 /* flags */, MainTy);
+    Ty = CreateDerivedType(DW_TAG_const_type, findRegion(TYPE_CONTEXT(type)),
+                           StringRef(), getOrCreateFile(main_input_filename),
+                           0 /*line no*/, NodeSizeInBits(type),
+                           NodeAlignInBits(type), 0 /*offset */, 0 /* flags */,
+                           MainTy);
 
   if (TYPE_VOLATILE(type) || TYPE_READONLY(type)) {
-// Below line commented by Arun in attempt to compile using llvm-3.6
-//    TypeCache[type] = WeakVH(Ty);
-// Below line added by Arun in attempt to compile using llvm-3.6
+    // Below line commented by Arun in attempt to compile using llvm-3.6
+    //    TypeCache[type] = WeakVH(Ty);
+    // Below line added by Arun in attempt to compile using llvm-3.6
     TypeCache[type] = TrackingMDRef(Ty);
     return Ty;
   }
@@ -1035,9 +1038,9 @@ DIType DebugInfo::getOrCreateType(tree type) {
     return DIType();
 
   // Check to see if the compile unit already has created this type.
-// Below line commented by Arun in attempt to compile using llvm-3.6
-//  std::map<tree_node *, WeakVH>::iterator I = TypeCache.find(type);
-// Below line added by Arun in attempt to compile using llvm-3.6
+  // Below line commented by Arun in attempt to compile using llvm-3.6
+  //  std::map<tree_node *, WeakVH>::iterator I = TypeCache.find(type);
+  // Below line added by Arun in attempt to compile using llvm-3.6
   std::map<tree_node *, TrackingMDRef>::iterator I = TypeCache.find(type);
   if (I != TypeCache.end())
     if (I->second)
@@ -1101,9 +1104,9 @@ DIType DebugInfo::getOrCreateType(tree type) {
     Ty = createBasicType(type);
     break;
   }
-// Below line commented by Arun in attempt to compile using llvm-3.6
-//  TypeCache[type] = WeakVH(Ty);
-// Below line added by Arun in attempt to compile using llvm-3.6
+  // Below line commented by Arun in attempt to compile using llvm-3.6
+  //  TypeCache[type] = WeakVH(Ty);
+  // Below line added by Arun in attempt to compile using llvm-3.6
   TypeCache[type] = TrackingMDRef(Ty);
   return Ty;
 }
@@ -1196,10 +1199,11 @@ DIFile DebugInfo::getOrCreateFile(const char *FullPath) {
 
 /// CreateDerivedType - Create a derived type like const qualified type,
 /// pointer, typedef, etc.
-DIDerivedType DebugInfo::CreateDerivedType(
-    unsigned Tag, DIDescriptor Context, StringRef Name, DIFile F,
-    unsigned LineNumber, uint64_t SizeInBits, uint64_t AlignInBits,
-    uint64_t OffsetInBits, unsigned Flags, DIType DerivedFrom) {
+DIDerivedType
+DebugInfo::CreateDerivedType(unsigned Tag, DIDescriptor Context, StringRef Name,
+                             DIFile F, unsigned LineNumber, uint64_t SizeInBits,
+                             uint64_t AlignInBits, uint64_t OffsetInBits,
+                             unsigned Flags, DIType DerivedFrom) {
   switch (Tag) {
   case dwarf::DW_TAG_typedef:
     return Builder.createTypedef(DerivedFrom, Name, F, LineNumber, Context);
@@ -1269,8 +1273,7 @@ DISubprogram DebugInfo::CreateSubprogram(
   if (ContainingType.isValid() || VK || VIndex)
     return Builder.createMethod(Context, Name, LinkageName, F, LineNo, CTy,
                                 isLocalToUnit, isDefinition, VK, VIndex,
-                                DIType(),
-                                Flags, isOptimized, Fn, NULL);
+                                DIType(), Flags, isOptimized, Fn, NULL);
   return Builder.createFunction(Context, Name, LinkageName, F, LineNo, CTy,
                                 isLocalToUnit, isDefinition, LineNo, Flags,
                                 isOptimized, Fn, NULL, NULL);
@@ -1278,8 +1281,9 @@ DISubprogram DebugInfo::CreateSubprogram(
 
 /// CreateSubprogramDefinition - Create new subprogram descriptor for the
 /// given declaration.
-DISubprogram DebugInfo::CreateSubprogramDefinition(
-    DISubprogram &SP, unsigned LineNo, Function *Fn) {
+DISubprogram DebugInfo::CreateSubprogramDefinition(DISubprogram &SP,
+                                                   unsigned LineNo,
+                                                   Function *Fn) {
   if (SP.isDefinition())
     return DISubprogram(SP);
 
@@ -1309,18 +1313,18 @@ Instruction *DebugInfo::InsertDeclare(Value *Storage, DIVariable D,
 }
 
 /// InsertDbgValueIntrinsic - Insert a new llvm.dbg.value intrinsic call.
-Instruction *DebugInfo::InsertDbgValueIntrinsic(
-    Value *V, uint64_t Offset,
-    DIVariable D, DIExpression DExpr,
-    Instruction *InsertBefore) {
+Instruction *DebugInfo::InsertDbgValueIntrinsic(Value *V, uint64_t Offset,
+                                                DIVariable D,
+                                                DIExpression DExpr,
+                                                Instruction *InsertBefore) {
   return Builder.insertDbgValueIntrinsic(V, Offset, D, DExpr, InsertBefore);
 }
 
 /// InsertDbgValueIntrinsic - Insert a new llvm.dbg.value intrinsic call.
-Instruction *DebugInfo::InsertDbgValueIntrinsic(
-    Value *V, uint64_t Offset,
-    DIVariable D, DIExpression DExpr,
-    BasicBlock *InsertAtEnd) {
+Instruction *DebugInfo::InsertDbgValueIntrinsic(Value *V, uint64_t Offset,
+                                                DIVariable D,
+                                                DIExpression DExpr,
+                                                BasicBlock *InsertAtEnd) {
   return Builder.insertDbgValueIntrinsic(V, Offset, D, DExpr, InsertAtEnd);
 }
 

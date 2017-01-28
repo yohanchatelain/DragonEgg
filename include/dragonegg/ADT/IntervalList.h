@@ -56,20 +56,20 @@ template <class T, typename U, unsigned N> class IntervalList {
   /// isSane - Return true if the intervals are non-empty, disjoint and
   /// sorted.
   bool isSane() const {
-    if (Intervals.size() != (unsigned) Intervals.size())
+    if (Intervals.size() != (unsigned)Intervals.size())
       return false; // Too many intervals.
-    for (unsigned i = 0, e = (unsigned) Intervals.size(); i < e; ++i) {
+    for (unsigned i = 0, e = (unsigned)Intervals.size(); i < e; ++i) {
       if (Intervals[i].getRange().empty())
         return false;
-      if (i && Intervals[i].getRange().getFirst() <
-               Intervals[i - 1].getRange().getLast())
+      if (i &&
+          Intervals[i].getRange().getFirst() <
+              Intervals[i - 1].getRange().getLast())
         return false;
     }
     return true;
   }
 
 public:
-
   /// AddInterval - Add the given interval to the list.  If it overlaps any
   /// existing intervals then the existing intervals are pruned by removing
   /// exactly the parts of them that overlap the new interval.  If the added
@@ -77,7 +77,7 @@ public:
   void AddInterval(const T &S);
 
   /// getNumIntervals - Return the number of intervals in the list.
-  unsigned getNumIntervals() const { return (unsigned) Intervals.size(); }
+  unsigned getNumIntervals() const { return (unsigned)Intervals.size(); }
 
   /// getInterval - Return the interval with the given index.
   T getInterval(unsigned Idx) { return Intervals[Idx]; }

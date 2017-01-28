@@ -23,7 +23,9 @@
 #ifndef DRAGONEGG_TARGET_H
 #define DRAGONEGG_TARGET_H
 
-namespace llvm { class SubtargetFeatures; }
+namespace llvm {
+class SubtargetFeatures;
+}
 
 /* LLVM specific stuff for supporting calling convention output */
 #define TARGET_ADJUST_LLVM_CC(CC, type)                                        \
@@ -125,8 +127,8 @@ extern bool llvm_x86_should_pass_aggregate_in_integer_regs(tree_node *,
 #define LLVM_SHOULD_PASS_AGGREGATE_IN_INTEGER_REGS(X, Y, Z)                    \
   llvm_x86_should_pass_aggregate_in_integer_regs((X), (Y), (Z))
 
-extern llvm::Type *
-llvm_x86_scalar_type_for_struct_return(tree_node *type, unsigned *Offset);
+extern llvm::Type *llvm_x86_scalar_type_for_struct_return(tree_node *type,
+                                                          unsigned *Offset);
 
 /* LLVM_SCALAR_TYPE_FOR_STRUCT_RETURN - Return LLVM Type if X can be
    returned as a scalar, otherwise return NULL. */
@@ -140,8 +142,10 @@ extern llvm::Type *llvm_x86_aggr_type_for_struct_return(tree_node *type);
 #define LLVM_AGGR_TYPE_FOR_STRUCT_RETURN(X, CC)                                \
   llvm_x86_aggr_type_for_struct_return(X)
 
-extern void llvm_x86_extract_multiple_return_value(
-    llvm::Value *Src, llvm::Value *Dest, bool isVolatile, LLVMBuilder &B);
+extern void llvm_x86_extract_multiple_return_value(llvm::Value *Src,
+                                                   llvm::Value *Dest,
+                                                   bool isVolatile,
+                                                   LLVMBuilder &B);
 
 /* LLVM_EXTRACT_MULTIPLE_RETURN_VALUE - Extract multiple return value from
    SRC and assign it to DEST. */
@@ -200,10 +204,12 @@ extern bool llvm_x86_should_pass_aggregate_in_memory(tree_node *, llvm::Type *);
 #define LLVM_SHOULD_PASS_AGGREGATE_USING_BYVAL_ATTR(X, TY)                     \
   llvm_x86_should_pass_aggregate_in_memory(X, TY)
 
-extern bool llvm_x86_64_should_pass_aggregate_in_mixed_regs(
-    tree_node *, llvm::Type *Ty, std::vector<llvm::Type *> &);
-extern bool llvm_x86_32_should_pass_aggregate_in_mixed_regs(
-    tree_node *, llvm::Type *Ty, std::vector<llvm::Type *> &);
+extern bool
+llvm_x86_64_should_pass_aggregate_in_mixed_regs(tree_node *, llvm::Type *Ty,
+                                                std::vector<llvm::Type *> &);
+extern bool
+llvm_x86_32_should_pass_aggregate_in_mixed_regs(tree_node *, llvm::Type *Ty,
+                                                std::vector<llvm::Type *> &);
 
 #define LLVM_SHOULD_PASS_AGGREGATE_IN_MIXED_REGS(T, TY, CC, E)                 \
   (TARGET_64BIT                                                                \
@@ -296,12 +302,12 @@ extern const char *llvm_x86_override_target_environment();
    the string extracted from the magic symbol built for that register, rather
    than reg_names.  The latter maps both AH and AL to the same thing, which
    means we can't distinguish them. */
-#define LLVM_GET_REG_NAME(REG_NAME, REG_NUM)                         \
-  __extension__({                                   \
+#define LLVM_GET_REG_NAME(REG_NAME, REG_NUM)                                   \
+  __extension__({                                                              \
     const char *nm = (REG_NAME);                                               \
     if (nm && (*nm == '%' || *nm == '#'))                                      \
       ++nm;                                                                    \
-    ((!nm || ISDIGIT(*nm)) ? reg_names[REG_NUM] : nm);                                                              \
+    ((!nm || ISDIGIT(*nm)) ? reg_names[REG_NUM] : nm);                         \
   })
 
 /* LLVM_CANONICAL_ADDRESS_CONSTRAINTS - Valid x86 memory addresses include
@@ -338,7 +344,7 @@ extern const char *llvm_x86_override_target_environment();
       argvec.push_back("-force-align-stack");                                  \
   } while (0)
 
-#if LLVM_VERSION_LE(3,6)
+#if LLVM_BELOW_OR(3, 6)
 #define LLVM_SET_TARGET_MACHINE_OPTIONS(O)                                     \
   do {                                                                         \
     if (TARGET_OMIT_LEAF_FRAME_POINTER)                                        \

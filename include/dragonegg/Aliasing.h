@@ -25,7 +25,9 @@
 #define DRAGONEGG_ALIASING_H
 
 // Forward declarations.
-namespace llvm { class MDNode; }
+namespace llvm {
+class MDNode;
+}
 union tree_node;
 
 /// describeAliasSet - Return TBAA metadata describing what a load from or store
