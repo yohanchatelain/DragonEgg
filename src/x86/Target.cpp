@@ -902,8 +902,13 @@ bool TreeToLLVM::TargetIntrinsicLower(
         Ops[1] = ConstantInt::get(IntTy, (shiftVal - 16) * 8);
 
         // create i32 constant
+#if LLVM_VERSION_LE(3,6)        
         Function *F =
             Intrinsic::getDeclaration(TheModule, Intrinsic::x86_sse2_psrl_dq);
+#else
+        Function *F =
+            Intrinsic::getDeclaration(TheModule, Intrinsic::x86_sse2_psrl_q);
+#endif
         Result =
             Builder.CreateCall(F, ArrayRef<Value *>(&Ops[0], 2), "palignr");
         Result = Builder.CreateBitCast(Result, ResultType);
@@ -1059,7 +1064,8 @@ bool TreeToLLVM::TargetIntrinsicLower(
     Result = Builder.CreateTruncOrBitCast(Ops[0], Int16Ty);
     Function *ctlz =
         Intrinsic::getDeclaration(TheModule, Intrinsic::ctlz, Int16Ty);
-    Result = Builder.CreateCall2(ctlz, Result, Builder.getTrue());
+    Value *Args[] = { Result, Builder.getTrue() };
+    Result = Builder.CreateCall(ctlz, Args);
     return true;
   }
   case ctzs: {
@@ -1068,7 +1074,8 @@ bool TreeToLLVM::TargetIntrinsicLower(
     Result = Builder.CreateTruncOrBitCast(Ops[0], Int16Ty);
     Function *cttz =
         Intrinsic::getDeclaration(TheModule, Intrinsic::cttz, Int16Ty);
-    Result = Builder.CreateCall2(cttz, Result, Builder.getTrue());
+    Value *Args[] = { Result, Builder.getTrue() };
+    Result = Builder.CreateCall(cttz, Args);
     return true;
   }
   case rdrand16_step:
@@ -1829,15 +1836,27 @@ void llvm_x86_extract_multiple_return_value(
 
     Value *E0Index = ConstantInt::get(Type::getInt32Ty(Context), 0);
     Value *EVI0 = Builder.CreateExtractElement(EVI, E0Index, "mrv.v");
+#if LLVM_VERSION_LE(3,6)
     Value *GEP0 = Builder.CreateStructGEP(Dest, 0, "mrv_gep");
+#else
+    Value *GEP0 = Builder.CreateStructGEP(nullptr, Dest, 0, "mrv_gep");
+#endif
     Builder.CreateAlignedStore(EVI0, GEP0, 1, isVolatile);
 
     Value *E1Index = ConstantInt::get(Type::getInt32Ty(Context), 1);
     Value *EVI1 = Builder.CreateExtractElement(EVI, E1Index, "mrv.v");
+#if LLVM_VERSION_LE(3,6)
     Value *GEP1 = Builder.CreateStructGEP(Dest, 1, "mrv_gep");
+#else
+    Value *GEP1 = Builder.CreateStructGEP(nullptr, Dest, 1, "mrv_gep");
+#endif
     Builder.CreateAlignedStore(EVI1, GEP1, 1, isVolatile);
 
+#if LLVM_VERSION_LE(3,6)
     Value *GEP2 = Builder.CreateStructGEP(Dest, 2, "mrv_gep");
+#else
+    Value *GEP2 = Builder.CreateStructGEP(nullptr, Dest, 2, "mrv_gep");
+#endif
     Value *EVI2 = Builder.CreateExtractValue(Src, 1, "mrv_gr");
     Builder.CreateAlignedStore(EVI2, GEP2, 1, isVolatile);
     return;
@@ -1849,7 +1868,11 @@ void llvm_x86_extract_multiple_return_value(
 
     // Directly access first class values using getresult.
     if (DestElemType->isSingleValueType()) {
+#if LLVM_VERSION_LE(3,6)
       Value *GEP = Builder.CreateStructGEP(Dest, DNO, "mrv_gep");
+#else
+      Value *GEP = Builder.CreateStructGEP(nullptr, Dest, DNO, "mrv_gep");
+#endif
       Value *EVI = Builder.CreateExtractValue(Src, SNO, "mrv_gr");
       Builder.CreateAlignedStore(EVI, GEP, 1, isVolatile);
       ++DNO;

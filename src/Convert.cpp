@@ -25,11 +25,13 @@
 #include "dragonegg/Aliasing.h"
 #include "dragonegg/ConstantConversion.h"
 #include "dragonegg/Debug.h"
+#include "dragonegg/Internals.h"
 #include "dragonegg/TypeConversion.h"
 
 // LLVM headers
 #include "llvm/ADT/Statistic.h"
 #include "llvm/ADT/StringExtras.h"
+#include "llvm/IR/Instructions.h"
 #include "llvm/IR/MDBuilder.h"
 #include "llvm/IR/Module.h"
 #include "llvm/IR/CFG.h"
@@ -153,7 +155,7 @@ extern void debug_gimple_stmt(union gimple_statement_d *);
 // Trees header.
 #include "dragonegg/Trees.h"
 
-static LLVMContext &Context = getGlobalContext();
+static LLVMContext &Context = *TheContext;
 
 #define DEBUG_TYPE "dragonegg"
 STATISTIC(NumBasicBlocks, "Number of basic blocks converted");
@@ -228,8 +230,13 @@ DisplaceLocationByUnits(MemRef Loc, int32_t Offset, LLVMBuilder &Builder) {
   unsigned AddrSpace = Loc.Ptr->getType()->getPointerAddressSpace();
   Type *UnitPtrTy = GetUnitPointerType(Context, AddrSpace);
   Value *Ptr = Builder.CreateBitCast(Loc.Ptr, UnitPtrTy);
+#if LLVM_VERSION_LE(3,6)
   Ptr = Builder.CreateConstInBoundsGEP1_32(Ptr, Offset,
                                            flag_verbose_asm ? "dsplc" : "");
+#else
+  Ptr = Builder.CreateConstInBoundsGEP1_32(nullptr, Ptr, Offset,
+                                           flag_verbose_asm ? "dsplc" : "");
+#endif
   Ptr = Builder.CreateBitCast(Ptr, Loc.Ptr->getType());
   uint32_t Align = MinAlign(Loc.getAlignment(), Offset);
   return MemRef(Ptr, Align, Loc.Volatile);
@@ -627,14 +634,16 @@ static void StoreRegisterToMemory(Value *V, MemRef Loc, tree type,
 TreeToLLVM *TheTreeToLLVM = 0;
 
 const DataLayout &getDataLayout() {
-  return *TheTarget->getSubtargetImpl()->getDataLayout();
+  return *TheDataLayout;
 }
 
 /// EmitDebugInfo - Return true if debug info is to be emitted for current
 /// function.
 bool TreeToLLVM::EmitDebugInfo() {
+#if LLVM_VERSION_LE(3,6)
   if (TheDebugInfo && !DECL_IGNORED_P(getFUNCTION_DECL()))
     return true;
+#endif
   return false;
 }
 
@@ -649,6 +658,7 @@ TreeToLLVM::TreeToLLVM(tree fndecl)
   if (EmitDebugInfo()) {
     expanded_location Location = expand_location(DECL_SOURCE_LOCATION(fndecl));
 
+#if LLVM_VERSION_LE(3,6)
     if (Location.file) {
       TheDebugInfo->setLocationFile(Location.file);
       TheDebugInfo->setLocationLine(Location.line);
@@ -656,6 +666,7 @@ TreeToLLVM::TreeToLLVM(tree fndecl)
       TheDebugInfo->setLocationFile("");
       TheDebugInfo->setLocationLine(0);
     }
+#endif
   }
 
   assert(TheTreeToLLVM == 0 && "Reentering function creation?");
@@ -811,12 +822,13 @@ struct FunctionPrologArgumentConversion : public DefaultABIClient {
     assert(AI != Builder.GetInsertBlock()->getParent()->arg_end() &&
            "No explicit return value?");
     AI->setName("agg.result");
+    Argument *Arg = &*AI;
 
     isShadowRet = true;
     tree ResultDecl = DECL_RESULT(FunctionDecl);
     tree RetTy = TREE_TYPE(TREE_TYPE(FunctionDecl));
     if (TREE_CODE(RetTy) == TREE_CODE(TREE_TYPE(ResultDecl))) {
-      TheTreeToLLVM->set_decl_local(ResultDecl, AI);
+      TheTreeToLLVM->set_decl_local(ResultDecl, Arg);
       ++AI;
       return;
     }
@@ -826,13 +838,15 @@ struct FunctionPrologArgumentConversion : public DefaultABIClient {
            "Not type match and not passing by reference?");
     // Create an alloca for the ResultDecl.
     Value *Tmp = TheTreeToLLVM->CreateTemporary(AI->getType());
-    Builder.CreateStore(AI, Tmp);
+    Builder.CreateStore(Arg, Tmp);
 
     TheTreeToLLVM->set_decl_local(ResultDecl, Tmp);
+#if LLVM_VERSION_LE(3,6)
     if (TheDebugInfo && !DECL_IGNORED_P(FunctionDecl)) {
       TheDebugInfo->EmitDeclare(ResultDecl, dwarf::DW_TAG_auto_variable,
                                 "agg.result", RetTy, Tmp, Builder);
     }
+#endif
     ++AI;
   }
 
@@ -840,14 +854,15 @@ struct FunctionPrologArgumentConversion : public DefaultABIClient {
     assert(AI != Builder.GetInsertBlock()->getParent()->arg_end() &&
            "No explicit return value?");
     AI->setName("scalar.result");
+    Argument* Arg = &*AI;
     isShadowRet = true;
-    TheTreeToLLVM->set_decl_local(DECL_RESULT(FunctionDecl), AI);
+    TheTreeToLLVM->set_decl_local(DECL_RESULT(FunctionDecl), Arg);
     ++AI;
   }
 
   void HandleScalarArgument(llvm::Type *LLVMTy, tree /*type*/,
                             unsigned RealSize = 0) {
-    Value *ArgVal = AI;
+    Value *ArgVal = &*AI;
     if (ArgVal->getType() != LLVMTy) {
       if (ArgVal->getType()->isPointerTy() && LLVMTy->isPointerTy()) {
         // If this is GCC being sloppy about pointer types, insert a bitcast.
@@ -874,6 +889,7 @@ struct FunctionPrologArgumentConversion : public DefaultABIClient {
   }
 
   void HandleByValArgument(llvm::Type */*LLVMTy*/, tree type) {
+    Argument* Arg = &*AI;
     if (LLVM_BYVAL_ALIGNMENT_TOO_SMALL(type)) {
       // Incoming object on stack is insufficiently aligned for the type.
       // Make a correctly aligned copy.
@@ -887,7 +903,7 @@ struct FunctionPrologArgumentConversion : public DefaultABIClient {
       Type *IntPtr = getDataLayout().getIntPtrType(Context, 0);
       Value *Ops[5] = {
         Builder.CreateCast(Instruction::BitCast, Loc, SBP),
-        Builder.CreateCast(Instruction::BitCast, AI, SBP),
+        Builder.CreateCast(Instruction::BitCast, Arg, SBP),
         ConstantInt::get(IntPtr, TREE_INT_CST_LOW(TYPE_SIZE_UNIT(type))),
         Builder.getInt32(LLVM_BYVAL_ALIGNMENT(type)), Builder.getFalse()
       };
@@ -903,10 +919,11 @@ struct FunctionPrologArgumentConversion : public DefaultABIClient {
 
   void HandleFCAArgument(llvm::Type */*LLVMTy*/, tree /*type*/) {
     // Store the FCA argument into alloca.
+    Argument *Arg = &*AI;
     assert(!LocStack.empty());
     Value *Loc = LocStack.back();
-    Builder.CreateStore(AI, Loc);
-    AI->setName(NameStack.back());
+    Builder.CreateStore(Arg, Loc);
+    Arg->setName(NameStack.back());
     ++AI;
   }
 
@@ -921,7 +938,12 @@ struct FunctionPrologArgumentConversion : public DefaultABIClient {
     // This cast only involves pointers, therefore BitCast.
     Loc = Builder.CreateBitCast(Loc, StructTy->getPointerTo());
 
+#if LLVM_VERSION_LE(3,6)
     Loc = Builder.CreateStructGEP(Loc, FieldNo, flag_verbose_asm ? "ntr" : "");
+#else
+    Loc = Builder.CreateStructGEP(nullptr, Loc, FieldNo,
+                                  flag_verbose_asm ? "ntr" : "");
+#endif
     LocStack.push_back(Loc);
   }
   void ExitField() {
@@ -1045,7 +1067,14 @@ void TreeToLLVM::StartFunctionBody() {
   TARGET_ADJUST_LLVM_LINKAGE(Fn, FnDecl);
 #endif /* TARGET_ADJUST_LLVM_LINKAGE */
 
+#if LLVM_VERSION_EQ(3,9)
+  if(!TREE_ADDRESSABLE(FnDecl))
+    Fn->setUnnamedAddr(GlobalValue::UnnamedAddr::None);
+  else
+    Fn->setUnnamedAddr(GlobalValue::UnnamedAddr::Global);
+#else
   Fn->setUnnamedAddr(!TREE_ADDRESSABLE(FnDecl));
+#endif
 
   // Handle visibility style
   handleVisibility(FnDecl, Fn);
@@ -1135,8 +1164,10 @@ void TreeToLLVM::StartFunctionBody() {
 #endif
   Builder.SetInsertPoint(EntryBlock);
 
+#if LLVM_VERSION_LE(3,6)
   if (EmitDebugInfo())
     TheDebugInfo->EmitFunctionStart(FnDecl, Fn);
+#endif
 
   // Loop over all of the arguments to the function, setting Argument names and
   // creating argument alloca's for the PARM_DECLs in case their address is
@@ -1173,16 +1204,19 @@ void TreeToLLVM::StartFunctionBody() {
          isPassedByVal(TREE_TYPE(Args), ArgTy, ScalarArgs,
                        Client.isShadowReturn(), CallingConv) &&
          !LLVM_BYVAL_ALIGNMENT_TOO_SMALL(TREE_TYPE(Args)))) {
+      Argument *Arg = &*AI;
       // If the value is passed by 'invisible reference' or 'byval reference',
       // the l-value for the argument IS the argument itself.  But for byval
       // arguments whose alignment as an argument is less than the normal
       // alignment of the type (examples are x86-32 aggregates containing long
       // double and large x86-64 vectors), we need to make the copy.
-      AI->setName(Name);
-      SET_DECL_LOCAL(Args, AI);
+      Arg->setName(Name);
+      SET_DECL_LOCAL(Args, Arg);
+#if LLVM_VERSION_LE(3,6)
       if (!isInvRef && EmitDebugInfo())
         TheDebugInfo->EmitDeclare(Args, dwarf::DW_TAG_arg_variable, Name,
                                   TREE_TYPE(Args), AI, Builder);
+#endif
       ABIConverter.HandleArgument(TREE_TYPE(Args), ScalarArgs);
     } else {
       // Otherwise, we create an alloca to hold the argument value and provide
@@ -1191,10 +1225,12 @@ void TreeToLLVM::StartFunctionBody() {
       Value *Tmp = CreateTemporary(ArgTy, TYPE_ALIGN_UNIT(TREE_TYPE(Args)));
       Tmp->setName(Name + "_addr");
       SET_DECL_LOCAL(Args, Tmp);
+#if LLVM_VERSION_LE(3,6)
       if (EmitDebugInfo()) {
         TheDebugInfo->EmitDeclare(Args, dwarf::DW_TAG_arg_variable, Name,
                                   TREE_TYPE(Args), Tmp, Builder);
       }
+#endif
 
       // Emit annotate intrinsic if arg has annotate attr
       if (DECL_ATTRIBUTES(Args))
@@ -1229,8 +1265,10 @@ void TreeToLLVM::StartFunctionBody() {
     // Not supported yet.
   }
 
+#if LLVM_VERSION_LE(3,6)
   if (EmitDebugInfo())
     TheDebugInfo->EmitStopPoint(Builder.GetInsertBlock(), Builder);
+#endif
 
   // Ensure that local variables are output in the order that they were declared
   // rather than in the order we come across them. This is only done to make the
@@ -1310,9 +1348,10 @@ void TreeToLLVM::PopulatePhiNodes() {
       // may occur as a predecessor of the LLVM basic block containing the phi.
       Function::iterator FI(BI->second), FE = Fn->end();
       for (++FI; FI != FE && !FI->hasName(); ++FI) {
+        BasicBlock* BB = &*FI;
         assert(FI->getSinglePredecessor() == IncomingValues.back().first &&
                "Anonymous block does not continue predecessor!");
-        IncomingValues.push_back(std::make_pair(FI, val));
+        IncomingValues.push_back(std::make_pair(BB, val));
       }
     }
 
@@ -1326,8 +1365,10 @@ void TreeToLLVM::PopulatePhiNodes() {
     BasicBlock *PhiBB = P.PHI->getParent();
     unsigned Index = 0;
     for (pred_iterator PI = pred_begin(PhiBB), PE = pred_end(PhiBB); PI != PE;
-         ++PI, ++Index)
-      Predecessors.push_back(std::make_pair(*PI, Index));
+         ++PI, ++Index) {
+      BasicBlock* BB = *PI;
+      Predecessors.push_back(std::make_pair(BB, Index));
+    }
 
     if (Predecessors.empty()) {
       // FIXME: If this happens then GCC has a control flow edge where LLVM has
@@ -1509,10 +1550,12 @@ Function *TreeToLLVM::FinishFunctionBody() {
     // call to PopulatePhiNodes (for example) generates complicated debug info,
     // then the debug info logic barfs.  Testcases showing this are 20011126-2.c
     // or pr42221.c from the gcc testsuite compiled with -g -O3.
+#if LLVM_VERSION_LE(3,6)
     if (EmitDebugInfo()) {
       TheDebugInfo->EmitStopPoint(ReturnBB, Builder);
       TheDebugInfo->EmitFunctionEnd(true);
     }
+#endif
   }
 
 #ifdef NDEBUG
@@ -1659,6 +1702,7 @@ void TreeToLLVM::EmitBasicBlock(basic_block bb) {
     input_location = gimple_location(stmt);
     ++NumStatements;
 
+#if LLVM_VERSION_LE(3,6)
     if (EmitDebugInfo()) {
       if (gimple_has_location(stmt)) {
         TheDebugInfo->setLocationFile(gimple_filename(stmt));
@@ -1669,6 +1713,7 @@ void TreeToLLVM::EmitBasicBlock(basic_block bb) {
       }
       TheDebugInfo->EmitStopPoint(Builder.GetInsertBlock(), Builder);
     }
+#endif
 
     switch (gimple_code(stmt)) {
     default:
@@ -1722,11 +1767,13 @@ void TreeToLLVM::EmitBasicBlock(basic_block bb) {
     }
   }
 
+#if LLVM_VERSION_LE(3,6)
   if (EmitDebugInfo()) {
     TheDebugInfo->setLocationFile("");
     TheDebugInfo->setLocationLine(0);
     TheDebugInfo->EmitStopPoint(Builder.GetInsertBlock(), Builder);
   }
+#endif
 
   // Add a branch to the fallthru block.
   edge e;
@@ -1753,7 +1800,11 @@ Function *TreeToLLVM::EmitFunction() {
     FMF.setAllowReciprocal();
   if (flag_unsafe_math_optimizations && flag_finite_math_only)
     FMF.setUnsafeAlgebra();
+#if LLVM_VERSION_LE(3,7)
   Builder.SetFastMathFlags(FMF);
+#else
+  Builder.setFastMathFlags(FMF);
+#endif
 
   // Set up parameters and prepare for return, for the function.
   StartFunctionBody();
@@ -2192,10 +2243,17 @@ void TreeToLLVM::CopyElementByElement(MemRef DestLoc, MemRef SrcLoc,
       // Get the address of the field.
       int FieldIdx = GetFieldIndex(Field, Ty);
       assert(FieldIdx != INT_MAX && "Should not be copying if no LLVM field!");
+#if LLVM_VERSION_LE(3,6)
       Value *DestFieldPtr = Builder.CreateStructGEP(
           DestLoc.Ptr, FieldIdx, flag_verbose_asm ? "df" : "");
       Value *SrcFieldPtr = Builder.CreateStructGEP(
           SrcLoc.Ptr, FieldIdx, flag_verbose_asm ? "sf" : "");
+#else
+      Value *DestFieldPtr = Builder.CreateStructGEP(nullptr,
+          DestLoc.Ptr, FieldIdx, flag_verbose_asm ? "df" : "");
+      Value *SrcFieldPtr = Builder.CreateStructGEP(nullptr,
+          SrcLoc.Ptr, FieldIdx, flag_verbose_asm ? "sf" : "");
+#endif
 
       // Compute the field's alignment.
       unsigned DestFieldAlign = DestLoc.getAlignment();
@@ -2226,13 +2284,21 @@ void TreeToLLVM::CopyElementByElement(MemRef DestLoc, MemRef SrcLoc,
   for (unsigned i = 0; i != ArrayLength; ++i) {
     // Get the address of the component.
     Value *DestCompPtr = DestLoc.Ptr, *SrcCompPtr = SrcLoc.Ptr;
+#if LLVM_VERSION_LE(3,6)
     if (i) {
       DestCompPtr = Builder.CreateConstInBoundsGEP1_32(
           DestCompPtr, i, flag_verbose_asm ? "da" : "");
       SrcCompPtr = Builder.CreateConstInBoundsGEP1_32(
           SrcCompPtr, i, flag_verbose_asm ? "sa" : "");
     }
-
+#else
+    if (i) {
+      DestCompPtr = Builder.CreateConstInBoundsGEP1_32(nullptr,
+          DestCompPtr, i, flag_verbose_asm ? "da" : "");
+      SrcCompPtr = Builder.CreateConstInBoundsGEP1_32(nullptr,
+          SrcCompPtr, i, flag_verbose_asm ? "sa" : "");
+    }
+#endif    
     // Compute the component's alignment.
     unsigned DestCompAlign = DestLoc.getAlignment();
     unsigned SrcCompAlign = SrcLoc.getAlignment();
@@ -2295,9 +2361,13 @@ void TreeToLLVM::ZeroElementByElement(MemRef DestLoc, tree type) {
       // Get the address of the field.
       int FieldIdx = GetFieldIndex(Field, Ty);
       assert(FieldIdx != INT_MAX && "Should not be zeroing if no LLVM field!");
+#if LLVM_VERSION_LE(3,6)
       Value *FieldPtr = Builder.CreateStructGEP(DestLoc.Ptr, FieldIdx,
                                                 flag_verbose_asm ? "zf" : "");
-
+#else
+      Value *FieldPtr = Builder.CreateStructGEP(nullptr, DestLoc.Ptr, FieldIdx,
+                                                flag_verbose_asm ? "zf" : "");
+#endif
       // Compute the field's alignment.
       unsigned FieldAlign = DestLoc.getAlignment();
       if (FieldIdx)
@@ -2322,10 +2392,16 @@ void TreeToLLVM::ZeroElementByElement(MemRef DestLoc, tree type) {
   for (unsigned i = 0; i != ArrayLength; ++i) {
     // Get the address of the component.
     Value *CompPtr = DestLoc.Ptr;
+#if LLVM_VERSION_LE(3,6)
     if (i)
       CompPtr = Builder.CreateConstInBoundsGEP1_32(
           CompPtr, i, flag_verbose_asm ? "za" : "");
-
+#else
+    if (i)
+      CompPtr = Builder.CreateConstInBoundsGEP1_32(
+          nullptr, CompPtr, i, flag_verbose_asm ? "za" : "");
+#endif
+    
     // Compute the component's alignment.
     unsigned CompAlign = DestLoc.getAlignment();
     if (i)
@@ -2535,12 +2611,14 @@ void TreeToLLVM::EmitAutomaticVariableDecl(tree decl) {
     Builder.CreateStore(Constant::getNullValue(T), AI);
   }
 
+#if LLVM_VERSION_LE(3,6)
   if (EmitDebugInfo()) {
     if (DECL_NAME(decl) || isa<RESULT_DECL>(decl)) {
       TheDebugInfo->EmitDeclare(decl, dwarf::DW_TAG_auto_variable,
                                 AI->getName(), TREE_TYPE(decl), AI, Builder);
     }
   }
+#endif
 }
 
 //===----------------------------------------------------------------------===//
@@ -2710,7 +2788,11 @@ void TreeToLLVM::EmitLandingPads() {
     unsigned RegionNo = region->index;
 
     // Insert instructions at the start of the landing pad, but after any phis.
+#if LLVM_VERSION_LE(3,7)
     Builder.SetInsertPoint(LPad, LPad->getFirstNonPHI());
+#else
+    Builder.SetInsertPoint(LPad, LPad->getFirstNonPHI()->getIterator());
+#endif
 
     // Create the landingpad instruction without any clauses.  Clauses are added
     // below.
@@ -2720,9 +2802,14 @@ void TreeToLLVM::EmitLandingPads() {
              "No exception handling personality!");
       personality = lang_hooks.eh_personality();
     }
+#if LLVM_VERSION_LE(3,6)
     LandingPadInst *LPadInst = Builder.CreateLandingPad(
         UnwindDataTy, DECL_LLVM(personality), 0, "exc");
-
+#else
+    LandingPadInst *LPadInst = Builder.CreateLandingPad(
+        UnwindDataTy, 0, "exc");
+#endif
+    
     // Store the exception pointer if made use of elsewhere.
     if (RegionNo < ExceptionPtrs.size() && ExceptionPtrs[RegionNo]) {
       Value *ExcPtr = Builder.CreateExtractValue(LPadInst, 0, "exc_ptr");
@@ -2848,8 +2935,13 @@ void TreeToLLVM::EmitFailureBlocks() {
           StructType::get(Builder.getInt8PtrTy(), Builder.getInt32Ty(), NULL);
       tree personality = DECL_FUNCTION_PERSONALITY(FnDecl);
       assert(personality && "No-throw region but no personality function!");
+#if LLVM_VERSION_LE(3,6)
       LandingPadInst *LPadInst = Builder.CreateLandingPad(
           UnwindDataTy, DECL_LLVM(personality), 1, "exc");
+#else
+      LandingPadInst *LPadInst = Builder.CreateLandingPad(
+          UnwindDataTy, 1, "exc");
+#endif
       ArrayType *FilterTy = ArrayType::get(Builder.getInt8PtrTy(), 0);
       LPadInst->addClause(ConstantArray::get(FilterTy, ArrayRef<Constant *>()));
 
@@ -2937,7 +3029,11 @@ Value *TreeToLLVM::EmitLoadOfLValue(tree exp) {
 
   // Load the minimum number of bytes that covers the field.
   unsigned LoadSizeInBits = LV.BitStart + LV.BitSize;
+#if LLVM_VERSION_LT(3,9)
   LoadSizeInBits = RoundUpToAlignment(LoadSizeInBits, BITS_PER_UNIT);
+#else
+  LoadSizeInBits = alignTo(LoadSizeInBits, BITS_PER_UNIT);
+#endif
   Type *LoadType = IntegerType::get(Context, LoadSizeInBits);
 
   // Load the bits.
@@ -3348,8 +3444,13 @@ struct FunctionCallArgumentConversion : public DefaultABIClient {
   void EnterField(unsigned FieldNo, llvm::Type *StructTy) {
     Value *Loc = getAddress();
     Loc = Builder.CreateBitCast(Loc, StructTy->getPointerTo());
+#if LLVM_VERSION_LE(3,6)
     pushAddress(
         Builder.CreateStructGEP(Loc, FieldNo, flag_verbose_asm ? "elt" : ""));
+#else
+    pushAddress(Builder.CreateStructGEP(nullptr, Loc, FieldNo,
+                                        flag_verbose_asm ? "elt" : ""));
+#endif
   }
   void ExitField() {
     assert(!LocStack.empty());
@@ -4397,8 +4498,8 @@ Value *TreeToLLVM::BuildBinaryAtomic(gimple stmt, AtomicRMWInst::BinOp Kind,
   C[0] = Builder.CreateBitCast(C[0], Ty[1]);
   C[1] = Builder.CreateIntCast(
       C[1], Ty[0], /*isSigned*/ !TYPE_UNSIGNED(return_type), "cast");
-  Value *Result =
-      Builder.CreateAtomicRMW(Kind, C[0], C[1], SequentiallyConsistent);
+  Value *Result = Builder.CreateAtomicRMW(
+      Kind, C[0], C[1], AtomicOrdering::SequentiallyConsistent);
   if (PostOp)
     Result = Builder.CreateBinOp(Instruction::BinaryOps(PostOp), Result, C[1]);
 
@@ -4427,8 +4528,8 @@ TreeToLLVM::BuildCmpAndSwapAtomic(gimple stmt, unsigned Bits, bool isBool) {
   Value *C[3] = { Ptr, Old_Val, New_Val };
   Value *Result =
       Builder.CreateAtomicCmpXchg(C[0], C[1], C[2],
-                                  SequentiallyConsistent,
-                                  SequentiallyConsistent);
+                                  AtomicOrdering::SequentiallyConsistent,
+                                  AtomicOrdering::SequentiallyConsistent);
 
   // AtomicCmpXchg has the type {i1,iN}.
   Result = Builder.CreateExtractValue(Result, 0);
@@ -4800,9 +4901,10 @@ bool TreeToLLVM::EmitBuiltinCall(gimple stmt, tree fndecl,
     // The argument and return type of cttz should match the argument type of
     // the ffs, but should ignore the return type of ffs.
     Value *Amt = EmitMemory(gimple_call_arg(stmt, 0));
-    Result = Builder.CreateCall2(
+    Value *Args[] = { Amt, Builder.getTrue() };
+    Result = Builder.CreateCall(
         Intrinsic::getDeclaration(TheModule, Intrinsic::cttz, Amt->getType()),
-        Amt, Builder.getTrue());
+        Args);
     Result = Builder.CreateAdd(Result, ConstantInt::get(Result->getType(), 1));
     Result = Builder.CreateIntCast(
 #if (GCC_MAJOR >= 5)
@@ -4913,7 +5015,7 @@ bool TreeToLLVM::EmitBuiltinCall(gimple stmt, tree fndecl,
   case BUILT_IN_SYNC_SYNCHRONIZE:
 #endif
     // We assume like gcc appears to, that this only applies to cached memory.
-    Builder.CreateFence(llvm::SequentiallyConsistent);
+    Builder.CreateFence(AtomicOrdering::SequentiallyConsistent);
     return true;
 #if defined(TARGET_ALPHA) || defined(TARGET_386) || defined(TARGET_POWERPC) || \
     defined(TARGET_ARM)
@@ -5271,7 +5373,7 @@ bool TreeToLLVM::EmitBuiltinCall(gimple stmt, tree fndecl,
     C[1] = Builder.CreateIntCast(
         C[1], ResultTy, /*isSigned*/ !TYPE_UNSIGNED(return_type), "cast");
     Result = Builder.CreateAtomicRMW(AtomicRMWInst::Nand, C[0], C[1],
-                                     SequentiallyConsistent);
+                                     AtomicOrdering::SequentiallyConsistent);
 
     Result = Builder.CreateAnd(Builder.CreateNot(Result), C[1]);
     Result = Builder.CreateIntToPtr(Result, ResultTy);
@@ -5419,9 +5521,9 @@ bool TreeToLLVM::EmitBuiltinCall(gimple stmt, tree fndecl,
     Value *TreeToLLVM::EmitBuiltinBitCountIntrinsic(gimple stmt,
                                                     Intrinsic::ID Id) {
       Value *Amt = EmitMemory(gimple_call_arg(stmt, 0));
-      Value *Result = Builder.CreateCall2(
-          Intrinsic::getDeclaration(TheModule, Id, Amt->getType()), Amt,
-          Builder.getTrue());
+      Value *Args[] = {Amt, Builder.getTrue()};
+      Value *Result = Builder.CreateCall(
+          Intrinsic::getDeclaration(TheModule, Id, Amt->getType()), Args);
 #if (GCC_MAJOR >= 5)
       tree return_type = gimple_call_return_type(as_a<gcall*>(stmt));
 #else
@@ -5978,9 +6080,9 @@ bool TreeToLLVM::EmitBuiltinCall(gimple stmt, tree fndecl,
 
       Ptr = Builder.CreateBitCast(Ptr, Type::getInt8PtrTy(Context));
 
-      Builder.CreateCall4(
-          Intrinsic::getDeclaration(TheModule, Intrinsic::prefetch), Ptr,
-          ReadWrite, Locality, Data);
+      Value *Args[] = {Ptr, ReadWrite, Locality, Data};
+      Builder.CreateCall(
+          Intrinsic::getDeclaration(TheModule, Intrinsic::prefetch), Args);
       return true;
     }
 
@@ -6452,7 +6554,8 @@ bool TreeToLLVM::EmitBuiltinCall(gimple stmt, tree fndecl,
           Intrinsic::getDeclaration(TheModule, Intrinsic::expect, ArgTy);
       Value *ArgValue = EmitRegister(gimple_call_arg(stmt, 0));
       Value *ExpectedValue = EmitRegister(gimple_call_arg(stmt, 1));
-      Result = Builder.CreateCall2(ExpectIntr, ArgValue, ExpectedValue);
+      Value *Args[] = { ArgValue, ExpectedValue };
+      Result = Builder.CreateCall(ExpectIntr, Args);
       Result = Reg2Mem(Result, type, Builder);
       return true;
     }
@@ -6815,8 +6918,14 @@ bool TreeToLLVM::EmitBuiltinCall(gimple stmt, tree fndecl,
       if (MemberIndex < INT_MAX) {
         assert(!TREE_OPERAND(exp, 2) && "Constant not gimple min invariant?");
         // Get a pointer to the byte in which the GCC field starts.
+#if LLVM_VERSION_LE(3,6)
         FieldPtr = Builder.CreateStructGEP(StructAddrLV.Ptr, MemberIndex,
                                            flag_verbose_asm ? "cr" : "");
+#else
+        FieldPtr =
+            Builder.CreateStructGEP(nullptr, StructAddrLV.Ptr, MemberIndex,
+                                    flag_verbose_asm ? "cr" : "");
+#endif
         // Within that byte, the bit at which the GCC field starts.
         BitStart = FieldBitOffset & 7;
       } else {
@@ -7001,9 +7110,15 @@ bool TreeToLLVM::EmitBuiltinCall(gimple stmt, tree fndecl,
         // IMAGPART alignment = MinAlign(Ptr.Alignment, sizeof field);
         Alignment = MinAlign(Ptr.getAlignment(),
                              DL.getTypeAllocSize(Ptr.Ptr->getType()));
+#if LLVM_VERSION_LE(3,6)
       return LValue(Builder.CreateStructGEP(Ptr.Ptr, Idx,
                                             flag_verbose_asm ? "prtxpr" : ""),
                     Alignment);
+#else
+      return LValue(Builder.CreateStructGEP(nullptr, Ptr.Ptr, Idx,
+                                            flag_verbose_asm ? "prtxpr" : ""),
+                    Alignment);
+#endif
     }
 
     LValue TreeToLLVM::EmitLV_SSA_NAME(tree exp) {
@@ -7105,7 +7220,7 @@ bool TreeToLLVM::EmitBuiltinCall(gimple stmt, tree fndecl,
       assert(is_gimple_reg_type(TREE_TYPE(addr)) && "Not of register type!");
 
       // Any generated code goes in the entry block.
-      BasicBlock *EntryBlock = Fn->begin();
+      BasicBlock *EntryBlock = &*(Fn->begin());
 
       // Note the current builder position.
       BasicBlock *SavedInsertBB = Builder.GetInsertBlock();
@@ -7434,8 +7549,13 @@ bool TreeToLLVM::EmitBuiltinCall(gimple stmt, tree fndecl,
 
       // Create a builder that inserts code before the SSAInsertionPoint marker.
       LLVMBuilder SSABuilder(Context, Builder.getFolder());
+#if LLVM_VERSION_LE(3,7)
       SSABuilder.SetInsertPoint(SSAInsertionPoint->getParent(),
                                 SSAInsertionPoint);
+#else
+      SSABuilder.SetInsertPoint(SSAInsertionPoint->getParent(),
+                                SSAInsertionPoint->getIterator());
+#endif
 
       // Use it to load the parameter value.
       MemRef ParamLoc(DECL_LOCAL_IF_SET(var), Alignment, false);
@@ -8501,13 +8621,25 @@ bool TreeToLLVM::EmitBuiltinCall(gimple stmt, tree fndecl,
                                     ConvertType(TREE_TYPE(op1)), NULL);
       AllocaInst *Tmp = CreateTemporary(TmpTy, Align);
       // Store the first vector to the first element of the pair.
+#if LLVM_VERSION_LE(3,6)
       Value *Tmp0 =
           Builder.CreateStructGEP(Tmp, 0, flag_verbose_asm ? "vp1s" : "");
+#else
+      Value *Tmp0 = Builder.CreateStructGEP(nullptr, Tmp, 0,
+                                            flag_verbose_asm ? "vp1s" : "");
+#endif
+
       StoreRegisterToMemory(V0, MemRef(Tmp0, Align, /*Volatile*/ false),
                             TREE_TYPE(op0), 0, Builder);
       // Store the second vector to the second element of the pair.
+#if LLVM_VERSION_LE(3,6)
       Value *Tmp1 =
           Builder.CreateStructGEP(Tmp, 1, flag_verbose_asm ? "vp2s" : "");
+#else
+      Value *Tmp1 = Builder.CreateStructGEP(nullptr, Tmp, 1,
+                                            flag_verbose_asm ? "vp2s" : "");
+#endif
+
       StoreRegisterToMemory(V1, MemRef(Tmp1, Align, /*Volatile*/ false),
                             TREE_TYPE(op1), 0, Builder);
 
@@ -8538,7 +8670,8 @@ bool TreeToLLVM::EmitBuiltinCall(gimple stmt, tree fndecl,
 
       Value *FMAIntr = Intrinsic::getDeclaration(TheModule, Intrinsic::fma,
                                                  V0->getType());
-      return Builder.CreateCall3(FMAIntr, V0, V1, V2);
+      Value *Args[] = { V0, V1, V2};
+      return Builder.CreateCall(FMAIntr, Args);
     }
 #endif
 
@@ -9211,9 +9344,15 @@ bool TreeToLLVM::EmitBuiltinCall(gimple stmt, tree fndecl,
       // Give the backend a chance to upgrade the inline asm to LLVM code.  This
       // handles some common cases that LLVM has intrinsics for, e.g. x86 bswap ->
       // llvm.bswap.
+#if LLVM_VERSION_LE(3,6)
       if (const TargetLowering *TLI =
-	  TheTarget->getSubtargetImpl()->getTargetLowering())
+              TheTarget->getSubtargetImpl()->getTargetLowering())
         TLI->ExpandInlineAsm(CV);
+#else
+      if (const TargetLowering *TLI =
+          TheTarget->getSubtargetImpl(*Fn)->getTargetLowering())
+        TLI->ExpandInlineAsm(CV);
+#endif
     }
 
     void TreeToLLVM::RenderGIMPLE_ASSIGN(gimple stmt) {
@@ -9237,7 +9376,8 @@ bool TreeToLLVM::EmitBuiltinCall(gimple stmt, tree fndecl,
                                             : ~0UL;
           Function *EndIntr =
               Intrinsic::getDeclaration(TheModule, Intrinsic::lifetime_end);
-          Builder.CreateCall2(EndIntr, Builder.getInt64(LHSSize), LHSAddr);
+          Value* Args[] = { Builder.getInt64(LHSSize), LHSAddr };
+          Builder.CreateCall(EndIntr, Args);
         }
         return;
       }
@@ -9983,8 +10123,13 @@ void TreeToLLVM::WriteScalarToLHS(tree lhs, Value * RHS) {
 
   // Load and store the minimum number of bytes that covers the field.
   unsigned LoadSizeInBits = LV.BitStart + LV.BitSize;
+#if LLVM_VERSION_LT(3,9)
   LoadSizeInBits =
       (unsigned) RoundUpToAlignment(LoadSizeInBits, BITS_PER_UNIT);
+#else
+  LoadSizeInBits =
+      (unsigned) alignTo(LoadSizeInBits, BITS_PER_UNIT);
+#endif
   Type *LoadType = IntegerType::get(Context, LoadSizeInBits);
 
   // Load the existing bits.

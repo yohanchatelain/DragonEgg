@@ -33,6 +33,44 @@
 #include "llvm/Support/ErrorHandling.h"
 #include "llvm/Support/FormattedStream.h"
 
+// Macros to get the LLVM and GCC versions right
+#define LLVM_VERSION_GT(major, minor) \
+  (LLVM_VERSION_MAJOR >= (major) && LLVM_VERSION_MINOR > minor)
+
+#define LLVM_VERSION_GE(major, minor) \
+  (LLVM_VERSION_MAJOR >= (major) && LLVM_VERSION_MINOR >= minor)
+
+#define LLVM_VERSION_LT(major, minor) \
+  (LLVM_VERSION_MAJOR <= (major) && LLVM_VERSION_MINOR < minor)
+
+#define LLVM_VERSION_LE(major, minor) \
+  (LLVM_VERSION_MAJOR <= (major) && LLVM_VERSION_MINOR <= minor)
+
+#define LLVM_VERSION_EQ(major, minor) \
+  (LLVM_VERSION_MAJOR == (major) && LLVM_VERSION_MINOR == minor)
+
+#define LLVM_VERSION_NE(major, minor) \
+  (LLVM_VERSION_MAJOR != (major) || LLVM_VERSION_MINOR != minor)
+
+#define GCC_GT(major, minor) \
+  (GCC_MAJOR >= (major) && GCC_MINOR > minor)
+
+#define GCC_GE(major, minor) \
+  (GCC_MAJOR >= (major) && GCC_MINOR >= minor)
+
+#define GCC_LT(major, minor) \
+  (GCC_MAJOR <= (major) && GCC_MINOR < minor)
+
+#define GCC_LE(major, minor) \
+  (GCC_MAJOR <= (major) && GCC_MINOR <= minor)
+
+#define GCC_EQ(major, minor) \
+  (GCC_MAJOR == (major) && GCC_MINOR == minor)
+
+#define GCC_NE(major, minor) \
+  (GCC_MAJOR != (major) || GCC_MINOR != minor)
+
+
 struct basic_block_def;
 
 #if (GCC_MINOR <= 8 && GCC_MAJOR == 4)
@@ -64,13 +102,24 @@ template <typename> class TrackingVH;
 }
 class DebugInfo;
 
+#if LLVM_VERSION_GE(3,9)
+typedef llvm::IRBuilder<llvm::TargetFolder> LLVMBuilder;
+#else 
 typedef llvm::IRBuilder<true, llvm::TargetFolder> LLVMBuilder;
+#endif
 
 // Global state.
+
+/// TheContext - This is the global context object that we use
+extern llvm::LLVMContext* TheContext;
 
 /// TheModule - This is the current global module that we are compiling into.
 ///
 extern llvm::Module *TheModule;
+
+/// TheDataLayout - A global object describing the data layout for the target
+///
+extern llvm::DataLayout *TheDataLayout;
 
 /// TheDebugInfo - This object is responsible for gather all debug information.
 /// If it's value is NULL then no debug information should be gathered.

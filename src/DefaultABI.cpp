@@ -22,6 +22,7 @@
 
 // Plugin headers
 #include "dragonegg/ABI.h"
+#include "dragonegg/Internals.h"
 
 // System headers
 #include <gmp.h>
@@ -222,7 +223,7 @@ void DefaultABI::HandleArgument(tree type, std::vector<Type *> &ScalarElts,
   std::vector<Type *> Elts;
   if (Ty->isVoidTy()) {
     // Handle void explicitly as a {} type.
-    Type *OpTy = StructType::get(getGlobalContext());
+    Type *OpTy = StructType::get(*TheContext);
     C.HandleScalarArgument(OpTy, type);
     ScalarElts.push_back(OpTy);
   } else if (isPassedByInvisibleReference(type)) { // variable size -> by-ref.
@@ -368,7 +369,7 @@ void DefaultABI::PassInIntegerRegisters(
   // from Int64 alignment. ARM backend needs this.
   unsigned Align = TYPE_ALIGN(type) / 8;
   unsigned Int64Align =
-      getDataLayout().getABITypeAlignment(Type::getInt64Ty(getGlobalContext()));
+      getDataLayout().getABITypeAlignment(Type::getInt64Ty(*TheContext));
   bool UseInt64 = (DontCheckAlignment || Align >= Int64Align);
 
   unsigned ElementSize = UseInt64 ? 8 : 4;
@@ -379,8 +380,8 @@ void DefaultABI::PassInIntegerRegisters(
   Type *ArrayElementType = NULL;
   if (ArraySize) {
     Size = Size % ElementSize;
-    ArrayElementType = (UseInt64 ? Type::getInt64Ty(getGlobalContext())
-                                 : Type::getInt32Ty(getGlobalContext()));
+    ArrayElementType = (UseInt64 ? Type::getInt64Ty(*TheContext)
+                                 : Type::getInt32Ty(*TheContext));
     ATy = ArrayType::get(ArrayElementType, ArraySize);
   }
 
@@ -388,13 +389,13 @@ void DefaultABI::PassInIntegerRegisters(
   unsigned LastEltRealSize = 0;
   llvm::Type *LastEltTy = 0;
   if (Size > 4) {
-    LastEltTy = Type::getInt64Ty(getGlobalContext());
+    LastEltTy = Type::getInt64Ty(*TheContext);
   } else if (Size > 2) {
-    LastEltTy = Type::getInt32Ty(getGlobalContext());
+    LastEltTy = Type::getInt32Ty(*TheContext);
   } else if (Size > 1) {
-    LastEltTy = Type::getInt16Ty(getGlobalContext());
+    LastEltTy = Type::getInt16Ty(*TheContext);
   } else if (Size > 0) {
-    LastEltTy = Type::getInt8Ty(getGlobalContext());
+    LastEltTy = Type::getInt8Ty(*TheContext);
   }
   if (LastEltTy) {
     if (Size != getDataLayout().getTypeAllocSize(LastEltTy))
@@ -406,7 +407,7 @@ void DefaultABI::PassInIntegerRegisters(
     Elts.push_back(ATy);
   if (LastEltTy)
     Elts.push_back(LastEltTy);
-  StructType *STy = StructType::get(getGlobalContext(), Elts, false);
+  StructType *STy = StructType::get(*TheContext, Elts, false);
 
   unsigned i = 0;
   if (ArraySize) {
@@ -438,13 +439,13 @@ void DefaultABI::PassInMixedRegisters(Type *Ty, std::vector<Type *> &OrigElts,
   // anywhere".  Happens on x86-64.
   std::vector<Type *> Elts(OrigElts);
   Type *wordType = getDataLayout().getPointerSize(0) == 4
-                   ? Type::getInt32Ty(getGlobalContext())
-                   : Type::getInt64Ty(getGlobalContext());
+                   ? Type::getInt32Ty(*TheContext)
+                   : Type::getInt64Ty(*TheContext);
   for (unsigned i = 0, e = Elts.size(); i != e; ++i)
     if (OrigElts[i]->isVoidTy())
       Elts[i] = wordType;
 
-  StructType *STy = StructType::get(getGlobalContext(), Elts, false);
+  StructType *STy = StructType::get(*TheContext, Elts, false);
 
   unsigned Size = getDataLayout().getTypeAllocSize(STy);
   unsigned InSize = 0;

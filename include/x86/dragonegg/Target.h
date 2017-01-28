@@ -338,11 +338,15 @@ extern const char *llvm_x86_override_target_environment();
       argvec.push_back("-force-align-stack");                                  \
   } while (0)
 
+#if LLVM_VERSION_LE(3,6)
 #define LLVM_SET_TARGET_MACHINE_OPTIONS(O)                                     \
   do {                                                                         \
     if (TARGET_OMIT_LEAF_FRAME_POINTER)                                        \
       O.NoFramePointerElim = false;                                            \
   } while (0)
+#else
+#define LLVM_SET_TARGET_MACHINE_OPTIONS(O)
+#endif
 
 #define LLVM_SET_TARGET_MACHINE_ATTRIBUTES(F)                                  \
   do {                                                                         \

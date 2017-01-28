@@ -69,6 +69,9 @@ extern "C" {
 using namespace llvm;
 using namespace llvm::dwarf;
 
+// We're not even going to try to get DebugInfo right
+#if LLVM_VERSION_LE(3,6)
+
 /// DirectoryAndFile - Extract the directory and file name from a path.  If no
 /// directory is specified, then use the source working directory.
 static void DirectoryAndFile(const std::string &FullPath,
@@ -1320,3 +1323,5 @@ Instruction *DebugInfo::InsertDbgValueIntrinsic(
     BasicBlock *InsertAtEnd) {
   return Builder.insertDbgValueIntrinsic(V, Offset, D, DExpr, InsertAtEnd);
 }
+
+#endif

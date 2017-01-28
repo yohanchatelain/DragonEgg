@@ -28,6 +28,7 @@
 #include "dragonegg/TypeConversion.h"
 
 // LLVM headers
+#include "llvm/ADT/IntervalMap.h"
 #include "llvm/ADT/SCCIterator.h"
 #include "llvm/ADT/StringExtras.h"
 
@@ -78,7 +79,7 @@ extern "C" {
 
 using namespace llvm;
 
-static LLVMContext &Context = getGlobalContext();
+static LLVMContext &Context = *TheContext;
 
 /// SCCInProgress - Set of mutually dependent types currently being converted.
 static const std::vector<tree_node *> *SCCInProgress;
@@ -1066,8 +1067,12 @@ public:
     // If the type is something like i17 then round it up to a multiple of a
     // byte.  This is not needed for correctness, but helps the optimizers.
     if ((Ty->getPrimitiveSizeInBits() % BITS_PER_UNIT) != 0) {
+#if LLVM_VERSION_LT(3,9)
       unsigned BitWidth =
           RoundUpToAlignment(Ty->getPrimitiveSizeInBits(), BITS_PER_UNIT);
+#else
+      unsigned BitWidth = alignTo(Ty->getPrimitiveSizeInBits(), BITS_PER_UNIT);
+#endif
       Ty = IntegerType::get(Context, BitWidth);
       if (isSafeToReturnContentsDirectly(DL))
         return Ty;

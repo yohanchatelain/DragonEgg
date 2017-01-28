@@ -39,12 +39,17 @@
 #include "llvm/IR/Module.h"
 #include "llvm/IR/Verifier.h"
 #include "llvm/MC/SubtargetFeature.h"
+#if LLVM_VERSION_GT(3,6)
+#include "llvm/IR/LegacyPassManager.h"
+#include "llvm/Analysis/TargetLibraryInfo.h"
+#else
 #include "llvm/PassManager.h"
+#include "llvm/Target/TargetLibraryInfo.h"
+#endif
 #include "llvm/Support/FileSystem.h"
 #include "llvm/Support/ManagedStatic.h"
 #include "llvm/Support/SourceMgr.h"
 #include "llvm/Support/TargetRegistry.h"
-#include "llvm/Target/TargetLibraryInfo.h"
 #include "llvm/Target/TargetSubtargetInfo.h"
 #include "llvm/Transforms/IPO.h"
 #include "llvm/Transforms/IPO/PassManagerBuilder.h"
@@ -167,13 +172,21 @@ std::vector<std::string> ArgStrings;
 static const char *llvm_asm_file_name;
 
 // Global state for the LLVM backend.
+static LLVMContext PrivateContext;
+LLVMContext *TheContext = &PrivateContext;
+DataLayout *TheDataLayout = 0;
 Module *TheModule = 0;
+#if LLVM_VERSION_LE(3,6)
 DebugInfo *TheDebugInfo = 0;
+#endif
 PassManagerBuilder PassBuilder;
 TargetMachine *TheTarget = 0;
 TargetFolder *TheFolder = 0;
-raw_ostream *OutStream = 0; // Stream to write assembly code to.
-formatted_raw_ostream FormattedOutStream;
+#if LLVM_VERSION_LE(3,6)
+formatted_raw_ostream *FormattedOutStream = 0;
+#else
+raw_pwrite_stream *FormattedOutStream = 0;
+#endif
 
 static bool DebugPassArguments;
 static bool DebugPassStructure;
@@ -192,9 +205,15 @@ std::vector<Constant *> AttributeAnnotateGlobals;
 /// PerFunctionPasses - This is the list of cleanup passes run per-function
 /// as each is compiled.  In cases where we are not doing IPO, it includes the
 /// code generator.
+#if LLVM_VERSION_LE(3,6)
 static FunctionPassManager *PerFunctionPasses = 0;
 static PassManager *PerModulePasses = 0;
 static PassManager *CodeGenPasses = 0;
+#else
+static legacy::FunctionPassManager *PerFunctionPasses = 0;
+static legacy::PassManager *PerModulePasses = 0;
+static legacy::PassManager *CodeGenPasses = 0;
+#endif
 
 static void createPerFunctionOptimizationPasses();
 static void createPerModuleOptimizationPasses();
@@ -362,9 +381,9 @@ static bool SizeOfGlobalMatchesDecl(GlobalValue *GV, tree decl) {
   // TODO: Change getTypeSizeInBits for aggregate types so it is no longer
   // rounded up to the alignment.
   uint64_t gcc_size = getInt64(DECL_SIZE(decl), true);
-  const DataLayout *DL = TheTarget->getSubtargetImpl()->getDataLayout();
+  const DataLayout *DL = TheDataLayout;
   unsigned Align = 8 * DL->getABITypeAlignment(Ty);
-  return TheTarget->getSubtargetImpl()->getDataLayout()->getTypeAllocSizeInBits(
+  return TheDataLayout->getTypeAllocSizeInBits(
              Ty) == ((gcc_size + Align - 1) / Align) * Align;
 }
 #endif
@@ -516,7 +535,11 @@ static void CreateTargetMachine(const std::string &TargetTriple) {
 
   // The target can set LLVM_SET_RELOC_MODEL to configure the relocation model
   // used by the LLVM backend.
+#if LLVM_VERSION_EQ(3,9)
+  Reloc::Model RelocModel = Reloc::Model::PIC_;
+#else
   Reloc::Model RelocModel = Reloc::Default;
+#endif
 #ifdef LLVM_SET_RELOC_MODEL
   LLVM_SET_RELOC_MODEL(RelocModel);
 #endif
@@ -530,6 +553,7 @@ static void CreateTargetMachine(const std::string &TargetTriple) {
 
   TargetOptions Options;
 
+#if LLVM_VERSION_LE(3,6)
   // Set frame pointer elimination mode.
   if (flag_omit_frame_pointer) {
     // Eliminate frame pointers everywhere.
@@ -538,6 +562,7 @@ static void CreateTargetMachine(const std::string &TargetTriple) {
     // Keep frame pointers everywhere.
     Options.NoFramePointerElim = true;
   }
+#endif
   // If a target has an option to eliminate frame pointers in leaf functions
   // only then it should set
   //   NoFramePointerElim = false;
@@ -570,7 +595,9 @@ static void CreateTargetMachine(const std::string &TargetTriple) {
   // TODO: DisableTailCalls.
   // TODO: TrapFuncName.
   // TODO: -fsplit-stack
+#if LLVM_VERSION_LT(3,9)
   Options.PositionIndependentExecutable = flag_pie;
+#endif
 
 #ifdef LLVM_SET_TARGET_MACHINE_OPTIONS
   LLVM_SET_TARGET_MACHINE_OPTIONS(Options);
@@ -582,8 +609,15 @@ static void CreateTargetMachine(const std::string &TargetTriple) {
 
   TheTarget = TME->createTargetMachine(TargetTriple, CPU, FeatureStr, Options,
                                        RelocModel, CMModel, CodeGenOptLevel());
-  assert(TheTarget->getSubtargetImpl()->getDataLayout()->isBigEndian() ==
-         BYTES_BIG_ENDIAN);
+#if LLVM_VERSION_LE(3,6)
+  TheDataLayout = new DataLayout(TheTarget->getSubtargetImpl()
+                                     ->getDataLayout()
+                                     ->getStringRepresentation());
+#else
+  TheDataLayout =
+      new DataLayout(TheTarget->createDataLayout().getStringRepresentation());
+#endif
+  assert(TheDataLayout->isBigEndian() == BYTES_BIG_ENDIAN);
 }
 
 /// output_ident - Insert a .ident directive that identifies the plugin.
@@ -607,7 +641,7 @@ static void output_ident(const char *ident_str) {
 static void CreateModule(const std::string &TargetTriple) {
   // Create the module itself.
   StringRef ModuleID = main_input_filename ? main_input_filename : "";
-  TheModule = new Module(ModuleID, getGlobalContext());
+  TheModule = new Module(ModuleID, *TheContext);
 
 #if (GCC_MINOR < 8 && GCC_MAJOR == 4)
 #ifdef IDENT_ASM_OP
@@ -631,9 +665,7 @@ static void CreateModule(const std::string &TargetTriple) {
   // Install information about the target triple and data layout into the module
   // for optimizer use.
   TheModule->setTargetTriple(TargetTriple);
-  TheModule->setDataLayout(TheTarget->getSubtargetImpl()
-                               ->getDataLayout()
-                               ->getStringRepresentation());
+  TheModule->setDataLayout(TheDataLayout->getStringRepresentation());
 }
 
 /// flag_default_initialize_globals - Whether global variables with no explicit
@@ -698,12 +730,18 @@ static void InitializeBackend(void) {
   // Create a module to hold the generated LLVM IR.
   CreateModule(TargetTriple);
 
-  TheFolder = new TargetFolder(TheTarget->getSubtargetImpl()->getDataLayout());
+#if LLVM_VERSION_LE(3,6)
+  TheFolder = new TargetFolder(TheDataLayout);
+#else
+  TheFolder = new TargetFolder(*TheDataLayout);
+#endif
 
+#if LLVM_VERSION_LE(3,6)
   if (debug_info_level > DINFO_LEVEL_NONE) {
     TheDebugInfo = new DebugInfo(TheModule);
     TheDebugInfo->Initialize();
   }
+#endif
 
   // Perform language specific configuration.
   InstallLanguageSettings();
@@ -716,27 +754,34 @@ static void InitializeBackend(void) {
 //  PassBuilder.SLPVectorize = flag_tree_slp_vectorize;
   PassBuilder.LoopVectorize = flag_tree_vectorize;
 
+#if LLVM_VERSION_LE(3,6)
   PassBuilder.LibraryInfo =
       new TargetLibraryInfo((Triple) TheModule->getTargetTriple());
   if (flag_no_simplify_libcalls)
     PassBuilder.LibraryInfo->disableAllFunctions();
+#endif
 
   Initialized = true;
 }
 
 /// InitializeOutputStreams - Initialize the assembly code output streams.
 static void InitializeOutputStreams(bool Binary) {
-  assert(!OutStream && "Output stream already initialized!");
+  assert(!FormattedOutStream && "Output stream already initialized!");
   std::error_code EC;
 
-  OutStream = new raw_fd_ostream(llvm_asm_file_name, EC,
-                                 Binary ? sys::fs::F_None : sys::fs::F_Text);
+#if LLVM_VERSION_LE(3,6)
+  raw_ostream *OutStream = new raw_fd_ostream(
+      llvm_asm_file_name, EC, Binary ? sys::fs::F_None : sys::fs::F_Text);
 
+  FormattedOutStream = new FormattedOutStream();
+  FormattedOutStream->setStream(*OutStream,
+                                formatted_raw_ostream::PRESERVE_STREAM);
+#else
+  FormattedOutStream = new raw_fd_ostream(
+      llvm_asm_file_name, EC, Binary ? sys::fs::F_None : sys::fs::F_Text);
+#endif
   if (EC)
     report_fatal_error(EC.message());
-
-  FormattedOutStream.setStream(*OutStream,
-                               formatted_raw_ostream::PRESERVE_STREAM);
 }
 
 static void createPerFunctionOptimizationPasses() {
@@ -745,9 +790,13 @@ static void createPerFunctionOptimizationPasses() {
 
   // Create and set up the per-function pass manager.
   // FIXME: Move the code generator to be function-at-a-time.
+#if LLVM_VERSION_LE(3,6)
   PerFunctionPasses = new FunctionPassManager(TheModule);
   PerFunctionPasses->add(new DataLayoutPass());
   TheTarget->addAnalysisPasses(*PerFunctionPasses);
+#else
+  PerFunctionPasses = new legacy::FunctionPassManager(TheModule);
+#endif
 
 #ifndef NDEBUG
   PerFunctionPasses->add(createVerifierPass());
@@ -763,7 +812,11 @@ static void createPerFunctionOptimizationPasses() {
   // FIXME: This is disabled right now until bugs can be worked out.  Reenable
   // this for fast -O0 compiles!
   if (!EmitIR && 0) {
+#if LLVM_VERSION_LE(3,6)
     FunctionPassManager *PM = PerFunctionPasses;
+#else
+    legacy::FunctionPassManager *PM = PerFunctionPasses;
+#endif
 
 // Request that addPassesToEmitFile run the Verifier after running
 // passes which modify the IR.
@@ -779,7 +832,7 @@ static void createPerFunctionOptimizationPasses() {
     TargetMachine::CodeGenFileType CGFT = TargetMachine::CGFT_AssemblyFile;
     if (EmitObj)
       CGFT = TargetMachine::CGFT_ObjectFile;
-    if (TheTarget->addPassesToEmitFile(*PM, FormattedOutStream, CGFT,
+    if (TheTarget->addPassesToEmitFile(*PM, *FormattedOutStream, CGFT,
                                        DisableVerify))
       llvm_unreachable("Error interfacing to target machine!");
   }
@@ -791,9 +844,14 @@ static void createPerModuleOptimizationPasses() {
   if (PerModulePasses)
     return;
 
+#if LLVM_VERSION_LE(3,6)
   PerModulePasses = new PassManager();
   PerModulePasses->add(new DataLayoutPass());
   TheTarget->addAnalysisPasses(*PerModulePasses);
+#else
+  PerModulePasses = new legacy::PassManager();
+  PerModulePasses->add(new TargetLibraryInfoWrapperPass());
+#endif
 
   Pass *InliningPass;
   if (!LLVMIROptimizeArg)
@@ -826,7 +884,7 @@ static void createPerModuleOptimizationPasses() {
     // Emit an LLVM .ll file to the output.  This is used when passed
     // -emit-llvm -S to the GCC driver.
     InitializeOutputStreams(false);
-    PerModulePasses->add(createPrintModulePass(*OutStream));
+    PerModulePasses->add(createPrintModulePass(*FormattedOutStream));
   } else {
     // If there are passes we have to run on the entire module, we do codegen
     // as a separate "pass" after that happens.
@@ -835,9 +893,13 @@ static void createPerModuleOptimizationPasses() {
     // FIXME: This is disabled right now until bugs can be worked out.  Reenable
     // this for fast -O0 compiles!
     if (PerModulePasses || 1) {
+#if LLVM_VERSION_LE(3,6)
       PassManager *PM = CodeGenPasses = new PassManager();
       PM->add(new DataLayoutPass());
       TheTarget->addAnalysisPasses(*PM);
+#else
+      legacy::PassManager *PM = CodeGenPasses = new legacy::PassManager();
+#endif
 
 // Request that addPassesToEmitFile run the Verifier after running
 // passes which modify the IR.
@@ -853,7 +915,7 @@ static void createPerModuleOptimizationPasses() {
       TargetMachine::CodeGenFileType CGFT = TargetMachine::CGFT_AssemblyFile;
       if (EmitObj)
         CGFT = TargetMachine::CGFT_ObjectFile;
-      if (TheTarget->addPassesToEmitFile(*PM, FormattedOutStream, CGFT,
+      if (TheTarget->addPassesToEmitFile(*PM, *FormattedOutStream, CGFT,
                                          DisableVerify))
         llvm_unreachable("Error interfacing to target machine!");
     }
@@ -868,7 +930,7 @@ static void CreateStructorsList(std::vector<std::pair<Constant *, int> > &Tors,
   std::vector<Constant *> StructInit;
   StructInit.resize(2);
 
-  LLVMContext &Context = getGlobalContext();
+  LLVMContext &Context = *TheContext;
 
   Type *FPTy =
       FunctionType::get(Type::getVoidTy(Context), std::vector<Type *>(), false);
@@ -892,7 +954,7 @@ static void CreateStructorsList(std::vector<std::pair<Constant *, int> > &Tors,
 /// global if possible.
 Constant *ConvertMetadataStringToGV(const char *str) {
 
-  Constant *Init = ConstantDataArray::getString(getGlobalContext(), str);
+  Constant *Init = ConstantDataArray::getString(*TheContext, str);
 
   // Use cached string if it exists.
   static std::map<Constant *, GlobalVariable *> StringCSTCache;
@@ -913,7 +975,7 @@ Constant *ConvertMetadataStringToGV(const char *str) {
 /// AddAnnotateAttrsToGlobal - Adds decls that have a annotate attribute to a
 /// vector to be emitted later.
 void AddAnnotateAttrsToGlobal(GlobalValue *GV, tree decl) {
-  LLVMContext &Context = getGlobalContext();
+  LLVMContext &Context = *TheContext;
 
   // Handle annotate attribute on global.
   tree annotateAttr = lookup_attribute("annotate", DECL_ATTRIBUTES(decl));
@@ -1052,8 +1114,13 @@ varpool_node_for_asm(target)
     auto *GV = cast<GlobalValue>(Aliasee->stripPointerCasts());
     if (auto *GA = llvm::dyn_cast<GlobalAlias>(GV))
       GV = cast<GlobalValue>(GA->getAliasee()->stripPointerCasts());
+#if LLVM_VERSION_EQ(3,7)
+    auto *GA = GlobalAlias::create(Aliasee->getType(),
+                                   Linkage, "", GV);
+#else
     auto *GA = GlobalAlias::create(Aliasee->getType()->getElementType(), 0,
                                    Linkage, "", GV);
+#endif
     handleVisibility(decl, GA);
 
     // Associate it with decl instead of V.
@@ -1221,7 +1288,11 @@ static void emit_global(tree decl) {
   // is not taken).  However if -fmerge-all-constants was specified then allow
   // merging even if the address was taken.  Note that merging will only happen
   // if the global is constant or later proved to be constant by the optimizers.
+#if LLVM_VERSION_EQ(3,9)
+  GV->setUnnamedAddr(GlobalValue::UnnamedAddr::None);
+#else
   GV->setUnnamedAddr(flag_merge_constants >= 2 || !TREE_ADDRESSABLE(decl));
+#endif
 
   handleVisibility(decl, GV);
 
@@ -1282,8 +1353,10 @@ static void emit_global(tree decl) {
 #endif
   }
 
+#if LLVM_VERSION_LE(3,6)
   if (TheDebugInfo)
     TheDebugInfo->EmitGlobalVariable(GV, decl);
+#endif
 
   // Sanity check that the LLVM global has the right size.
   assert(SizeOfGlobalMatchesDecl(GV, decl) && "Global has wrong size!");
@@ -1375,7 +1448,7 @@ Value *make_decl_llvm(tree decl) {
   if (errorcount || sorrycount)
     return NULL; // Do not process broken code.
 
-  LLVMContext &Context = getGlobalContext();
+  LLVMContext &Context = *TheContext;
 
   // Global register variable with asm name, e.g.:
   // register unsigned long esp __asm__("ebp");
@@ -2103,12 +2176,14 @@ static void llvm_finish_unit(void */*gcc_data*/, void */*user_data*/) {
     errs() << "Finishing compilation unit\n";
 
   InitializeBackend();
+#if LLVM_VERSION_LE(3,6)
   if (TheDebugInfo) {
     delete TheDebugInfo;
     TheDebugInfo = 0;
   }
+#endif
 
-  LLVMContext &Context = getGlobalContext();
+  LLVMContext &Context = *TheContext;
 
   createPerFunctionOptimizationPasses();
 
@@ -2203,8 +2278,7 @@ static void llvm_finish_unit(void */*gcc_data*/, void */*user_data*/) {
     Context.setInlineAsmDiagnosticHandler(OldHandler, OldHandlerData);
   }
 
-  FormattedOutStream.flush();
-  OutStream->flush();
+  FormattedOutStream->flush();
   //TODO  timevar_pop(TV_LLVM_PERFILE);
 
   // We have finished - shutdown the plugin.  Doing this here ensures that timer

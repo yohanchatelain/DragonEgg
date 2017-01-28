@@ -84,7 +84,7 @@ extern "C" {
 
 using namespace llvm;
 
-static LLVMContext &Context = getGlobalContext();
+static LLVMContext &Context = *TheContext;
 
 // Forward declarations.
 static Constant *ConvertInitializerImpl(tree, TargetFolder &);
@@ -592,7 +592,11 @@ static Constant *ExtractRegisterFromConstantImpl(
 /// byte StartingByte.
 Constant *
 ExtractRegisterFromConstant(Constant *C, tree type, int StartingByte) {
+#if LLVM_VERSION_LE(3,6)
   TargetFolder Folder(&getDataLayout());
+#else
+  TargetFolder Folder(getDataLayout());
+#endif
   return ExtractRegisterFromConstantImpl(C, type, StartingByte, Folder);
 }
 
@@ -1019,12 +1023,12 @@ static Constant *ConvertArrayCONSTRUCTOR(tree exp, TargetFolder &Folder) {
 namespace {
 
 class FieldContents {
-  TargetFolder &Folder;
+  TargetFolder *Folder;
   SignedRange R; // The range of bits occupied by the constant.
   Constant *C;   // The constant.  May be null if the range is empty.
   int Starts;    // The first bit of the constant is positioned at this offset.
 
-  FieldContents(SignedRange r, Constant *c, int starts, TargetFolder &folder)
+  FieldContents(SignedRange r, Constant *c, int starts, TargetFolder *folder)
       : Folder(folder), R(r), C(c), Starts(starts) {
     assert((R.empty() || C) && "Need constant when range not empty!");
   }
@@ -1035,7 +1039,7 @@ class FieldContents {
     if (R.empty())
       return 0;
     Type *IntTy = IntegerType::get(Context, R.getWidth());
-    return InterpretAsType(C, IntTy, R.getFirst() - Starts, Folder);
+    return InterpretAsType(C, IntTy, R.getFirst() - Starts, *Folder);
   }
 
   /// isSafeToReturnContentsDirectly - Return whether the current value for the
@@ -1065,7 +1069,7 @@ public:
   /// get - Fill the range [first, last) with the given constant.
   static FieldContents
   get(int first, int last, Constant *c, TargetFolder &folder) {
-    return FieldContents(SignedRange(first, last), c, first, folder);
+    return FieldContents(SignedRange(first, last), c, first, &folder);
   }
 
   // Copy assignment operator.
@@ -1112,8 +1116,12 @@ public:
     if ((C->getType()->getPrimitiveSizeInBits() % BITS_PER_UNIT) != 0) {
       Type *Ty = C->getType();
       assert(Ty->isIntegerTy() && "Non-integer type with non-byte size!");
+#if LLVM_VERSION_LT(3,9)
       unsigned BitWidth =
           RoundUpToAlignment(Ty->getPrimitiveSizeInBits(), BITS_PER_UNIT);
+#else
+      unsigned BitWidth = alignTo(Ty->getPrimitiveSizeInBits(), BITS_PER_UNIT);
+#endif
       Ty = IntegerType::get(Context, BitWidth);
       C = TheFolder->CreateZExtOrBitCast(C, Ty);
       if (isSafeToReturnContentsDirectly(DL))
@@ -1126,7 +1134,7 @@ public:
     // last elements of the constant, maybe yielding something less horrible.
     unsigned Units = R.getWidth() / BITS_PER_UNIT;
     C = InterpretAsType(C, GetUnitType(Context, Units), R.getFirst() - Starts,
-                        Folder);
+                        *Folder);
     Starts = R.getFirst();
     assert(isSafeToReturnContentsDirectly(DL) && "Unit over aligned?");
     return C;
@@ -1149,9 +1157,9 @@ void FieldContents::JoinWith(const FieldContents &S) {
   // together.  This can result in a nasty integer constant expression, but as
   // we only get here for bitfields that's mostly harmless.
   BitSlice Bits(R, getAsBits());
-  Bits.Merge(BitSlice(S.R, S.getAsBits()), Folder);
+  Bits.Merge(BitSlice(S.R, S.getAsBits()), *Folder);
   R = Bits.getRange();
-  C = Bits.getBits(R, Folder);
+  C = Bits.getBits(R, *Folder);
   Starts = R.empty() ? 0 : R.getFirst();
 }
 
@@ -1399,10 +1407,15 @@ static Constant *ConvertPOINTER_PLUS_EXPR(tree exp, TargetFolder &Folder) {
 
   // Convert the pointer into an i8* and add the offset to it.
   Ptr = Folder.CreateBitCast(Ptr, GetUnitPointerType(Context));
+#if LLVM_VERSION_LE(3,6)
   Constant *Result = POINTER_TYPE_OVERFLOW_UNDEFINED
-                     ? Folder.CreateInBoundsGetElementPtr(Ptr, Idx)
-                     : Folder.CreateGetElementPtr(Ptr, Idx);
-
+                         ? Folder.CreateInBoundsGetElementPtr(nullptr, Ptr, Idx)
+                         : Folder.CreateGetElementPtr(nullptr, Ptr, Idx);
+#else
+  Constant *Result = POINTER_TYPE_OVERFLOW_UNDEFINED
+                         ? Folder.CreateInBoundsGetElementPtr(nullptr, Ptr, Idx)
+                         : Folder.CreateGetElementPtr(nullptr, Ptr, Idx);
+#endif
   // The result may be of a different pointer type.
   Result = Folder.CreateBitCast(Result, getRegType(TREE_TYPE(exp)));
 
@@ -1505,7 +1518,11 @@ static Constant *ConvertInitializerImpl(tree exp, TargetFolder &Folder) {
 /// initial value may exceed the alloc size of the LLVM memory type generated
 /// for the GCC type (see ConvertType); it is never smaller than the alloc size.
 Constant *ConvertInitializer(tree exp) {
+#if LLVM_VERSION_LE(3,6)
   TargetFolder Folder(&getDataLayout());
+#else
+  TargetFolder Folder(getDataLayout());
+#endif
   return ConvertInitializerImpl(exp, Folder);
 }
 
@@ -1536,7 +1553,11 @@ static Constant *AddressOfSimpleConstant(tree exp, TargetFolder &Folder) {
   // Allow identical constants to be merged if the user allowed it.
   // FIXME: maybe this flag should be set unconditionally, and instead the
   // ConstantMerge pass should be disabled if flag_merge_constants is zero.
+#if LLVM_VERSION_EQ(3,9)
+  Slot->setUnnamedAddr(GlobalValue::UnnamedAddr::Global);
+#else
   Slot->setUnnamedAddr(flag_merge_constants);
+#endif
 
   return Slot;
 }
@@ -1570,9 +1591,15 @@ static Constant *AddressOfARRAY_REF(tree exp, TargetFolder &Folder) {
   Type *EltTy = ConvertType(main_type(main_type(array)));
   ArrayAddr = Folder.CreateBitCast(ArrayAddr, EltTy->getPointerTo());
 
+#if LLVM_VERSION_LE(3,6)
   return POINTER_TYPE_OVERFLOW_UNDEFINED
          ? Folder.CreateInBoundsGetElementPtr(ArrayAddr, IndexVal)
          : Folder.CreateGetElementPtr(ArrayAddr, IndexVal);
+#else
+  return POINTER_TYPE_OVERFLOW_UNDEFINED
+             ? Folder.CreateInBoundsGetElementPtr(nullptr, ArrayAddr, IndexVal)
+             : Folder.CreateGetElementPtr(nullptr, ArrayAddr, IndexVal);
+#endif
 }
 
 /// AddressOfCOMPONENT_REF - Return the address of a field in a record.
@@ -1610,8 +1637,12 @@ static Constant *AddressOfCOMPONENT_REF(tree exp, TargetFolder &Folder) {
   Type *UnitPtrTy = GetUnitPointerType(Context);
   Constant *StructAddr = AddressOfImpl(TREE_OPERAND(exp, 0), Folder);
   Constant *FieldPtr = Folder.CreateBitCast(StructAddr, UnitPtrTy);
+#if LLVM_VERSION_LE(3,6)
   FieldPtr = Folder.CreateInBoundsGetElementPtr(FieldPtr, Offset);
-
+#else 
+  FieldPtr = Folder.CreateInBoundsGetElementPtr(nullptr, FieldPtr, Offset);
+#endif
+  
   return FieldPtr;
 }
 
@@ -1664,7 +1695,11 @@ static Constant *AddressOfMEM_REF(tree exp, TargetFolder &Folder) {
   APInt Delta = getAPIntValue(TREE_OPERAND(exp, 1));
   Constant *Offset = ConstantInt::get(Context, Delta);
   // The address is always inside the referenced object, so "inbounds".
+#if LLVM_VERSION_LE(3,6)
   return Folder.CreateInBoundsGetElementPtr(Addr, Offset);
+#else
+  return Folder.CreateInBoundsGetElementPtr(nullptr, Addr, Offset);
+#endif
 }
 #endif
 
@@ -1735,6 +1770,10 @@ static Constant *AddressOfImpl(tree exp, TargetFolder &Folder) {
 /// type of the pointee is the memory type that corresponds to the type of exp
 /// (see ConvertType).
 Constant *AddressOf(tree exp) {
+#if LLVM_VERSION_LE(3,6)
   TargetFolder Folder(&getDataLayout());
+#else
+  TargetFolder Folder(getDataLayout());
+#endif
   return AddressOfImpl(exp, Folder);
 }

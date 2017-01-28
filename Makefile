@@ -135,6 +135,7 @@ $(TARGET_UTIL): $(TARGET_UTIL_OBJECTS)
 	@echo Linking $@
 	$(QUIET)$(CXX) -o $@ $^ \
 	$(shell $(LLVM_CONFIG) --libs support --system-libs) \
+	-Wl,-rpath=$(shell $(LLVM_CONFIG) --libdir) \
 	$(LD_OPTIONS)
 
 %.o : $(SRC_DIR)/%.cpp $(TARGET_UTIL)

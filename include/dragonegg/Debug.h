@@ -44,6 +44,8 @@ class Function;
 class Module;
 }
 
+#if LLVM_VERSION_LE(3,6)
+
 /// DebugInfo - This class gathers all debug information during compilation and
 /// is responsible for emitting to llvm globals or pass directly to the backend.
 class DebugInfo {
@@ -214,5 +216,7 @@ private:
                                              llvm::DIExpression Expr,
                                              llvm::Instruction *InsertBefore);
 };
+
+#endif
 
 #endif /* DRAGONEGG_DEBUG_H */

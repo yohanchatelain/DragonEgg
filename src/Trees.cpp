@@ -22,6 +22,7 @@
 
 // LLVM headers
 #include "llvm/ADT/APInt.h"
+#include "llvm/ADT/ArrayRef.h"
 #include "llvm/ADT/Twine.h"
 
 // System headers

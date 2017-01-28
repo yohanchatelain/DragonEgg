@@ -23,6 +23,7 @@
 
 // Plugin headers
 #include "dragonegg/Aliasing.h"
+#include "dragonegg/Internals.h"
 #include "llvm/ADT/SmallVector.h"
 
 // LLVM headers
@@ -71,7 +72,7 @@ extern "C" {
 
 using namespace llvm;
 
-static LLVMContext &Context = getGlobalContext();
+static LLVMContext &Context = *TheContext;
 
 /// getTBAARoot - Return the root of the TBAA tree for this compilation unit.
 static MDNode *getTBAARoot() {
