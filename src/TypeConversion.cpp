@@ -1583,6 +1583,9 @@ public:
 namespace llvm {
 template <> struct GraphTraits<tree> {
   typedef tree_node NodeType;
+#if LLVM_ABOVE_OR(3,9)
+  typedef tree_node* NodeRef;
+#endif
   typedef RecursiveTypeIterator ChildIteratorType;
   static inline NodeType *getEntryNode(tree t) {
     assert(TYPE_P(t) && "Expected a type!");

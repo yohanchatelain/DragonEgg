@@ -93,7 +93,7 @@ extern void debug_gimple_stmt(union gimple_statement_d *);
 
 using namespace llvm;
 
-static LLVMContext &Context = getGlobalContext();
+static LLVMContext &Context = TheContext;
 
 /// BitCastToIntVector - Bitcast the vector operand to a vector of integers of
 //  the same length.

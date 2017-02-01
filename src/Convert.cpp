@@ -2809,6 +2809,8 @@ void TreeToLLVM::EmitLandingPads() {
     LandingPadInst *LPadInst = Builder.CreateLandingPad(
         UnwindDataTy, DECL_LLVM(personality), 0, "exc");
 #else
+    if(not Fn->hasPersonalityFn())
+      Fn->setPersonalityFn(llvm::cast<Constant>(DECL_LLVM(personality)));
     LandingPadInst *LPadInst = Builder.CreateLandingPad(UnwindDataTy, 0, "exc");
 #endif
 

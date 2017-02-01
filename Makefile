@@ -95,7 +95,7 @@ ifneq ($(GCC_MINOR), 5)
   endif
 endif
 
-LD_OPTIONS+=$(shell $(LLVM_CONFIG) --ldflags) $(LDFLAGS)
+LD_OPTIONS+=$(shell $(LLVM_CONFIG) --ldflags) $(LDFLAGS) -Wl,-rpath=$(shell $(LLVM_CONFIG) --libdir)
 
 LLVM_COMPONENTS=ipo scalaropts target
 ifdef ENABLE_LLVM_PLUGINS
@@ -135,7 +135,6 @@ $(TARGET_UTIL): $(TARGET_UTIL_OBJECTS)
 	@echo Linking $@
 	$(QUIET)$(CXX) -o $@ $^ \
 	$(shell $(LLVM_CONFIG) --libs support --system-libs) \
-	-Wl,-rpath=$(shell $(LLVM_CONFIG) --libdir) \
 	$(LD_OPTIONS)
 
 %.o : $(SRC_DIR)/%.cpp $(TARGET_UTIL)
