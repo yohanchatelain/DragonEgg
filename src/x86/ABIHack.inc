@@ -1668,28 +1668,28 @@ struct GTY(()) stack_local_entry {
 		        )
    [padding2]	       /
   */
-struct ix86_frame
-{
-  int padding0;
-  int nsseregs;
-  int nregs;
-  int padding1;
-  int va_arg_size;
-  HOST_WIDE_INT frame;
-  int padding2;
-  int outgoing_arguments_size;
-  int red_zone_size;
+// struct ix86_frame
+// {
+//   int padding0;
+//   int nsseregs;
+//   int nregs;
+//   int padding1;
+//   int va_arg_size;
+//   HOST_WIDE_INT frame;
+//   int padding2;
+//   int outgoing_arguments_size;
+//   int red_zone_size;
 
-  HOST_WIDE_INT to_allocate;
-  /* The offsets relative to ARG_POINTER.  */
-  HOST_WIDE_INT frame_pointer_offset;
-  HOST_WIDE_INT hard_frame_pointer_offset;
-  HOST_WIDE_INT stack_pointer_offset;
+//   HOST_WIDE_INT to_allocate;
+//   /* The offsets relative to ARG_POINTER.  */
+//   HOST_WIDE_INT frame_pointer_offset;
+//   HOST_WIDE_INT hard_frame_pointer_offset;
+//   HOST_WIDE_INT stack_pointer_offset;
 
-  /* When save_regs_using_mov is set, emit prologue using
-     move instead of push instructions.  */
-  bool save_regs_using_mov;
-};
+//   /* When save_regs_using_mov is set, emit prologue using
+//      move instead of push instructions.  */
+//   bool save_regs_using_mov;
+// };
 
 /* Which cpu are we optimizing for.  */
 enum processor_type ix86_tune;
